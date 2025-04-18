@@ -1,6 +1,8 @@
+import streamlit as st
+
 import asyncio
 
-import streamlit as st
+
 
 from src.qa_gpt.core.ui.file_upload import handle_file_upload
 from src.qa_gpt.core.ui.material_operations import display_material_operations
