@@ -118,3 +118,43 @@ def process_pdf_directory(input_dir: str, output_dir: str) -> list[Path]:
             continue
 
     return processed_files
+
+
+def extract_markdown_elements(markdown_text: str) -> tuple[list[str], list[str], str]:
+    """
+    Extract images and tables from markdown text using regex and replace them with special tokens.
+
+    Args:
+        markdown_text: The markdown text to process
+
+    Returns:
+        tuple[list[str], list[str], str]: A tuple containing:
+            - list of image paths
+            - list of table HTML
+            - modified text with special tokens
+    """
+    import re
+
+    # Pattern for markdown images: ![](images/path/to/image.jpg)
+    image_pattern = r"!\[.*?\]\((images/.*?)\)"
+    # Pattern for HTML tables: <html><body><table>...</table></body></html>
+    table_pattern = r"<html><body><table>.*?</table></body></html>"
+
+    # Find all matches
+    images = re.findall(image_pattern, markdown_text)
+    tables = re.findall(table_pattern, markdown_text, re.DOTALL)
+
+    # Create modified text with replacements
+    modified_text = markdown_text
+
+    # Replace images with tokens
+    for i, image_path in enumerate(images, 1):
+        image_pattern = re.escape(f"![]({image_path})")
+        modified_text = re.sub(image_pattern, f"<<%%image_{i}>>", modified_text)
+
+    # Replace tables with tokens
+    for i, table_html in enumerate(tables, 1):
+        table_pattern = re.escape(table_html)
+        modified_text = re.sub(table_pattern, f"<<%%table_{i}>>", modified_text, flags=re.DOTALL)
+
+    return images, tables, modified_text
