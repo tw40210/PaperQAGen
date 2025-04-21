@@ -28,3 +28,11 @@ OmegaConf.register_new_resolver("time", datetime_resolver)
 
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+
+# Initialize Folder Path
+OUTPUT_FOLDER_PATH = "output_question_data"
+LOCAL_DB_FOLDER_PATH = "local_db"
+ARCHIVED_MATERIALS_FOLDER_PATH = "archived_materials"
+Path(OUTPUT_FOLDER_PATH).mkdir(parents=True, exist_ok=True)
+Path(LOCAL_DB_FOLDER_PATH).mkdir(parents=True, exist_ok=True)
+Path(ARCHIVED_MATERIALS_FOLDER_PATH).mkdir(parents=True, exist_ok=True)

@@ -17,3 +17,20 @@ src/qa_gpt/chat/private_keys.py
 .cursorignore
 .env
 .cursor/*
+
+# images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+
+# documents
+*.pdf
+*.docx
+*.doc
+*.xls
+*.xlsx
+*.pptx
+*.md
