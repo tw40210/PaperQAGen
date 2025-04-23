@@ -164,6 +164,7 @@ class MaterialController:
                 / Path(f"{file_path.stem}_{archive_file_id}{file_path.suffix}"),
                 mc_question_sets={},
                 summaries={},
+                parsing_results={"sections": None, "images": None, "tables": None},
             )
 
             db_path = LocalDatabaseController.get_target_path(

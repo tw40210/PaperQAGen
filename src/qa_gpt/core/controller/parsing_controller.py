@@ -1,23 +1,6 @@
-from pydantic import BaseModel, Field
-
 from src.qa_gpt.chat.chat import get_chat_gpt_response_structure
+from src.qa_gpt.core.objects.parsing import TextSections
 from src.qa_gpt.core.utils.pdf_processor import extract_markdown_elements
-
-
-class TextSection(BaseModel):
-    """Represents a section of text with its content and summary"""
-
-    title: str = Field(..., description="Title of the section")
-    content: str = Field(
-        ..., description="Content of the section, should be a clip from the original text"
-    )
-    summary: str = Field(..., description="Brief summary of the section")
-
-
-class TextAnalysis(BaseModel):
-    """Represents the complete analysis of a text with multiple sections"""
-
-    sections: list[TextSection] = Field(..., description="List of text sections")
 
 
 class ParsingController:
@@ -35,7 +18,7 @@ class ParsingController:
         5. Ensure sections are coherent and maintain the original meaning
         """
 
-    def analyze_text_file(self, file_path: str) -> TextAnalysis:
+    def get_sections_from_text_file(self, file_path: str) -> TextSections:
         """
         Analyze a text file and break it down into structured sections using OpenAI.
 
@@ -43,7 +26,7 @@ class ParsingController:
             file_path: Path to the text file to analyze
 
         Returns:
-            TextAnalysis: Structured analysis of the text with sections
+            TextSections: Structured analysis of the text with sections
         """
         # Read the text file
         with open(file_path, encoding="utf-8") as f:
@@ -60,10 +43,10 @@ class ParsingController:
         ]
 
         # Get structured response from OpenAI
-        analysis = get_chat_gpt_response_structure(messages, TextAnalysis)
-        return analysis, images, tables
+        sections = get_chat_gpt_response_structure(messages, TextSections)
+        return sections, images, tables
 
-    def save_analysis_to_file(self, analysis: TextAnalysis, output_path: str) -> None:
+    def save_sections_to_file(self, analysis: TextSections, output_path: str) -> None:
         """
         Save the text analysis to a markdown file.
 

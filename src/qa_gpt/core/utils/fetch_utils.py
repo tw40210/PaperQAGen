@@ -4,6 +4,7 @@ from src.qa_gpt.core.controller.db_controller import (
     LocalDatabaseController,
     MaterialController,
 )
+from src.qa_gpt.core.controller.parsing_controller import ParsingController
 from src.qa_gpt.core.controller.qa_controller import QAController
 from src.qa_gpt.core.objects.summaries import (
     InnovationSummary,
@@ -229,3 +230,54 @@ def output_question_data(file_id: str | None = None, process_all: bool = False):
             raise ValueError(f"File ID {file_id} not found in material table")
 
     material_controller.output_material_as_folder(output_folder_path)
+
+
+async def fetch_material_add_parsing(file_id: str | None = None, process_all: bool = False):
+    """Fetch material and add parsing results to each material.
+
+    Args:
+        file_id: ID of a specific file to process. If None, will process all files.
+        process_all: Must be set to True to process all files when file_id is None.
+    """
+    if file_id is None and not process_all:
+        raise ValueError("Must set process_all=True to process all files when file_id is None")
+
+    material_controller = initialize_controllers()
+    parsing_controller = ParsingController()
+
+    # Fetch material folder first
+    material_controller.fetch_material_folder(Path("./pdf_data"))
+    material_table = material_controller.get_material_table()
+
+    # Filter material table if specific file_id is provided
+    if file_id is not None:
+        if file_id not in material_table:
+            raise ValueError(f"File ID {file_id} not found in material table")
+        material_table = {file_id: material_table[file_id]}
+
+    total_materials = len(material_table)
+    for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
+        print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
+
+        # Skip if parsing results already exist
+        if file_meta["parsing_results"]["sections"] is not None:
+            print(f"Skipping {file_id} as parsing results already exist.")
+            continue
+
+        # Get parsing results
+        sections, images, tables = parsing_controller.get_sections_from_text_file(
+            str(file_meta["file_path"])
+        )
+
+        # Update parsing results
+        file_meta["parsing_results"] = {"sections": sections, "images": images, "tables": tables}
+
+        # Save updated file meta
+        target_path = material_controller.db_controller.get_target_path(
+            [material_controller.db_table_name, str(file_id)]
+        )
+        material_controller.db_controller.save_data(file_meta, target_path)
+
+        print(f"Added parsing results for material {file_id}")
+
+    print(f"\nCompleted processing {total_materials} materials")

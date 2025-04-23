@@ -28,11 +28,11 @@ def main():
 
     # Analyze the text file
     print(f"Analyzing text file: {args.input_file}")
-    analysis = controller.analyze_text_file(args.input_file)
+    analysis = controller.get_sections_from_text_file(args.input_file)
 
     # Save the analysis
     print(f"Saving analysis to: {args.output}")
-    controller.save_analysis_to_file(analysis, args.output)
+    controller.save_sections_to_file(analysis, args.output)
 
     print("Analysis completed successfully!")
 

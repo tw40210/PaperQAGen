@@ -156,6 +156,7 @@ def test_append_mc_question_set(test_material_controller, sample_question_set):
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -206,6 +207,7 @@ def test_append_summary(test_material_controller, sample_summary):
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -245,6 +247,7 @@ def test_append_technical_summary(test_material_controller, sample_technical_sum
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -288,6 +291,7 @@ def test_append_multiple_summaries(
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -324,6 +328,7 @@ def test_get_material_table(test_material_controller):
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -347,6 +352,7 @@ def test_get_material_mapping_table(test_material_controller):
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -378,6 +384,7 @@ def test_mapping_table_string_ids(test_material_controller):
             file_path=Path(f"test_file_{i}.pdf"),
             mc_question_sets={},
             summaries={},
+            parsing_results={"sections": None, "images": None, "tables": None},
         )
         test_material_controller.db_controller.save_data(
             file_meta,
@@ -410,6 +417,7 @@ def test_output_material_as_folder(test_material_controller, sample_question_set
         file_path=Path("test_file.pdf"),
         mc_question_sets={"0": sample_question_set},
         summaries={"StandardSummary": sample_summary},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -458,6 +466,7 @@ def test_output_material_with_technical_summary(test_material_controller, sample
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
         summaries={"TechnicalSummary": sample_technical_summary},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
     test_material_controller.db_controller.save_data(
         file_meta,
@@ -510,6 +519,7 @@ def test_remove_material_by_filename(test_material_controller):
         file_path=test_material_controller.archive_path / f"{file_name}_0.pdf",
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
 
     # Save file meta to material table
@@ -571,6 +581,7 @@ def test_remove_material_by_filename_with_associated_data(
         file_path=test_material_controller.archive_path / f"{file_name}_0.pdf",
         mc_question_sets={"0": sample_question_set},
         summaries={"StandardSummary": sample_summary},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
 
     # Save file meta to material table
@@ -618,6 +629,7 @@ def test_remove_material_with_technical_summary(test_material_controller, sample
         file_path=test_material_controller.archive_path / f"{file_name}_0.pdf",
         mc_question_sets={},
         summaries={"TechnicalSummary": sample_technical_summary},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
 
     # Save file meta to material table

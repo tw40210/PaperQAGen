@@ -33,6 +33,7 @@ class FileMeta(BasicDataBaseObject):
     file_path: Path
     mc_question_sets: dict[str, MultipleChoiceQuestionSet]
     summaries: dict[str, StandardSummary | TechnicalSummary]
+    parsing_results: dict[str, any]
 
     def __getitem__(self, key):
         # Get the attribute using dictionary-like syntax

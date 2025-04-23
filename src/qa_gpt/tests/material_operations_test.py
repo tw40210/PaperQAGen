@@ -61,6 +61,7 @@ def test_material_folder(test_output_folder, test_material_controller, test_pdf_
         file_path=Path("test_material.pdf"),
         mc_question_sets={},
         summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
     )
 
     # Save to database
