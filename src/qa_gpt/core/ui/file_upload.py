@@ -4,6 +4,7 @@ from pathlib import Path
 import streamlit as st
 
 from src.qa_gpt.core.utils.fetch_utils import (
+    fetch_material_add_parsing,
     fetch_material_add_sets,
     fetch_material_add_summary,
     initialize_controllers_and_get_file_id,
@@ -50,6 +51,7 @@ async def handle_file_upload():
 
             # Process the uploaded file using fetch functions
             with st.spinner("Processing the uploaded file..."):
+                await fetch_material_add_parsing(file_id=file_id)
                 await fetch_material_add_summary(file_id=file_id)
                 await fetch_material_add_sets(file_id=file_id)
                 output_question_data(file_id=file_id)

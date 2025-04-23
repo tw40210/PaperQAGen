@@ -12,6 +12,7 @@ from src.qa_gpt.core.objects.summaries import (
     StandardSummary,
     TechnicalSummary,
 )
+from src.qa_gpt.core.utils.pdf_processor import process_pdf_file
 
 summary_objects = [StandardSummary, TechnicalSummary, InnovationSummary, MetaDataSummary]
 
@@ -245,6 +246,10 @@ async def fetch_material_add_parsing(file_id: str | None = None, process_all: bo
     material_controller = initialize_controllers()
     parsing_controller = ParsingController()
 
+    # Create markdown folder if it doesn't exist
+    markdown_folder = Path("./markdown")
+    markdown_folder.mkdir(exist_ok=True)
+
     # Fetch material folder first
     material_controller.fetch_material_folder(Path("./pdf_data"))
     material_table = material_controller.get_material_table()
@@ -264,9 +269,18 @@ async def fetch_material_add_parsing(file_id: str | None = None, process_all: bo
             print(f"Skipping {file_id} as parsing results already exist.")
             continue
 
-        # Get parsing results
+        # Process PDF to markdown first
+        pdf_path = file_meta["file_path"]
+        markdown_path = process_pdf_file(str(pdf_path), str(markdown_folder))
+
+        if markdown_path is None:
+            print(f"Failed to process PDF to markdown for {file_id}")
+            continue
+
+        # Get parsing results from markdown file
+        print(f"Processing markdown file for {file_id}")
         sections, images, tables = parsing_controller.get_sections_from_text_file(
-            str(file_meta["file_path"])
+            str(markdown_path)
         )
 
         # Update parsing results
