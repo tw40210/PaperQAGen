@@ -25,7 +25,7 @@ repos:
         name: flake8
         entry: flake8
         language: python
-        args: ["--max-line-length", "100", "--ignore=E501,E203,W503,N815,N806,W291"]
+        args: ["--max-line-length", "100", "--ignore=E501,E203,W503,N815,N806,W291,E202"]
         additional_dependencies:
           - pep8-naming
           - flake8-absolute-import

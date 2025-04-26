@@ -3,13 +3,8 @@ from pathlib import Path
 
 import streamlit as st
 
-from src.qa_gpt.core.utils.fetch_utils import (
-    fetch_material_add_parsing,
-    fetch_material_add_sets,
-    fetch_material_add_summary,
-    initialize_controllers_and_get_file_id,
-    output_question_data,
-)
+from src.qa_gpt.core.controller.fetch_controller import FetchController
+from src.qa_gpt.core.utils.fetch_utils import initialize_controllers_and_get_file_id
 
 
 def load_json_from_file(file_path):
@@ -49,12 +44,15 @@ async def handle_file_upload():
             # Get material controller and file ID
             material_controller, file_id = initialize_controllers_and_get_file_id(file_path)
 
-            # Process the uploaded file using fetch functions
+            # Process the uploaded file using FetchController
             with st.spinner("Processing the uploaded file..."):
-                await fetch_material_add_parsing(file_id=file_id)
-                await fetch_material_add_summary(file_id=file_id)
-                await fetch_material_add_sets(file_id=file_id)
-                output_question_data(file_id=file_id)
+                # Initialize FetchController with the existing material controller
+                fetch_controller = FetchController()
+
+                await fetch_controller.fetch_material_add_parsing(file_id=file_id)
+                await fetch_controller.fetch_material_add_summary(file_id=file_id)
+                await fetch_controller.fetch_material_add_sets(file_id=file_id)
+                fetch_controller.output_question_data(file_id=file_id)
 
             st.success(f"File '{uploaded_file.name}' uploaded and processed successfully")
             # Reset the file uploader state

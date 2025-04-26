@@ -285,6 +285,7 @@ class MaterialController:
             meta_dict["file_path"] = str(meta_dict["file_path"])
             meta_dict.pop("mc_question_sets")
             meta_dict.pop("summaries")
+            meta_dict.pop("parsing_results")
 
             mc_question_sets = material_table[str(material_id)].mc_question_sets
             summaries = material_table[str(material_id)].summaries

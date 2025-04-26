@@ -4,17 +4,6 @@ from src.qa_gpt.core.controller.db_controller import (
     LocalDatabaseController,
     MaterialController,
 )
-from src.qa_gpt.core.controller.parsing_controller import ParsingController
-from src.qa_gpt.core.controller.qa_controller import QAController
-from src.qa_gpt.core.objects.summaries import (
-    InnovationSummary,
-    MetaDataSummary,
-    StandardSummary,
-    TechnicalSummary,
-)
-from src.qa_gpt.core.utils.pdf_processor import process_pdf_file
-
-summary_objects = [StandardSummary, TechnicalSummary, InnovationSummary, MetaDataSummary]
 
 
 def initialize_controllers() -> MaterialController:
@@ -64,234 +53,56 @@ def initialize_controllers_and_get_file_id(file_path: Path | str) -> tuple[Mater
     return material_controller, file_id
 
 
-async def fetch_material_add_sets(file_id: str | None = None, process_all: bool = False):
-    """Fetch material and add question sets to each material.
+def _filter_material_table_by_file_id(material_table: dict, file_id: str | None) -> dict:
+    """Filter material table by file_id if provided.
 
     Args:
-        file_id: ID of a specific file to process. If None, will process all files.
-        process_all: Must be set to True to process all files when file_id is None.
+        material_table: The material table to filter
+        file_id: ID of a specific file to process. If None, returns the original table.
+
+    Returns:
+        Filtered material table containing only the specified file_id if provided,
+        otherwise returns the original table.
+
+    Raises:
+        ValueError: If file_id is provided but not found in material table.
     """
-    if file_id is None and not process_all:
-        raise ValueError("Must set process_all=True to process all files when file_id is None")
-
-    material_controller = initialize_controllers()
-    qa_controller = QAController()
-
-    # Fetch material folder first
-    material_controller.fetch_material_folder(Path("./pdf_data"))
-    material_table = material_controller.get_material_table()
-
-    # Filter material table if specific file_id is provided
     if file_id is not None:
         if file_id not in material_table:
             raise ValueError(f"File ID {file_id} not found in material table")
-        material_table = {file_id: material_table[file_id]}
-
-    total_materials = len(material_table)
-    for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
-        print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
-        print(
-            f"Material {file_id} originally have {len(file_meta.mc_question_sets)} mc_questions sets."
-        )
-
-        # Prepare batch processing data
-        file_paths = []
-        field_names = []
-        field_values = []
-        prefixes = []
-
-        for summary_idx, summary_object in enumerate(summary_objects, 1):
-            # Skip if summary type doesn't exist
-            summary_type = summary_object.__name__
-            if summary_type not in file_meta.summaries or file_meta.summaries[summary_type] is None:
-                print(f"Skipping {summary_type} as it doesn't exist.")
-                continue
-
-            print(f"\nProcessing summary {summary_idx}/{len(summary_objects)}: {summary_type}")
-            # Get the summary object
-            summary = file_meta.summaries[summary_type]
-            summary_dict = summary.model_dump()
-
-            # Get questions for each top-level attribute
-            total_fields = len(summary_dict)
-            excluded_fields = set(summary_object.excluded_fields())
-            for field_idx, (field_name, field_value) in enumerate(summary_dict.items(), 1):
-                if field_name in excluded_fields:
-                    print(f"Excluding field {field_idx}/{total_fields}: {field_name}")
-                    continue
-                print(f"Processing field {field_idx}/{total_fields}: {field_name}")
-                # Create prefix for the question set
-                prefix = f"{summary_type}_{field_name}"
-
-                # Count existing question sets with this prefix
-                existing_count = sum(
-                    1 for key in file_meta.mc_question_sets.keys() if key.startswith(prefix)
-                )
-                if existing_count > 0:
-                    print(
-                        f"Skipping {prefix} as {existing_count} question set(s) already exist(s)."
-                    )
-                    continue
-
-                file_paths.append(file_meta["file_path"])
-                field_names.append(field_name)
-                field_values.append(field_value)
-                prefixes.append(prefix)
-
-        # Process all questions in batch
-        if file_paths:
-            question_sets = await qa_controller.get_questions_batch(
-                file_paths, field_names, field_values
-            )
-            for prefix, question_set in zip(prefixes, question_sets):
-                material_controller.append_mc_question_set(file_id, question_set, prefix)
-                print(f"Added question set for {prefix}")
-
-        print(f"\nCompleted processing material {material_idx}/{total_materials} (ID: {file_id})")
+        return {file_id: material_table[file_id]}
+    return material_table
 
 
-async def fetch_material_add_summary(file_id: str | None = None, process_all: bool = False):
-    """Fetch material and add summary to each material.
+def _should_skip_field_processing(
+    field_name: str,
+    excluded_fields: set,
+    file_meta: dict,
+    prefix: str,
+    field_idx: int,
+    total_fields: int,
+) -> tuple[bool, str | None]:
+    """Check if we should skip processing a field.
 
     Args:
-        file_id: ID of a specific file to process. If None, will process all files.
-        process_all: Must be set to True to process all files when file_id is None.
+        field_name: Name of the field to check
+        excluded_fields: Set of fields to exclude
+        file_meta: File metadata containing question sets
+        prefix: Prefix for the question set
+        field_idx: Current field index
+        total_fields: Total number of fields
+
+    Returns:
+        Tuple of (should_skip, reason) where:
+        - should_skip: Boolean indicating whether to skip processing
+        - reason: String explaining why we're skipping, or None if not skipping
     """
-    if file_id is None and not process_all:
-        raise ValueError("Must set process_all=True to process all files when file_id is None")
+    if field_name in excluded_fields:
+        return True, f"Excluding field {field_idx}/{total_fields}: {field_name}"
 
-    material_controller = initialize_controllers()
-    qa_controller = QAController()
+    # Count existing question sets with this prefix
+    existing_count = sum(1 for key in file_meta.mc_question_sets.keys() if key.startswith(prefix))
+    if existing_count > 0:
+        return True, f"Skipping {prefix} as {existing_count} question set(s) already exist(s)."
 
-    # Fetch material folder first
-    material_controller.fetch_material_folder(Path("./pdf_data"))
-    material_table = material_controller.get_material_table()
-
-    # Filter material table if specific file_id is provided
-    if file_id is not None:
-        if file_id not in material_table:
-            raise ValueError(f"File ID {file_id} not found in material table")
-        material_table = {file_id: material_table[file_id]}
-
-    total_materials = len(material_table)
-    for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
-        print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
-
-        # Prepare batch processing data
-        file_paths = []
-        summary_classes = []
-        summary_types = []
-
-        for summary_idx, summary_object in enumerate(summary_objects, 1):
-            # Skip if summary type already exists
-            summary_type = summary_object.__name__
-            if (
-                summary_type in file_meta.summaries
-                and file_meta.summaries[summary_type] is not None
-            ):
-                print(f"Skipping {summary_type} as it already exists.")
-                continue
-
-            print(f"Processing summary {summary_idx}/{len(summary_objects)}: {summary_type}")
-            file_paths.append(file_meta["file_path"])
-            summary_classes.append(summary_object)
-            summary_types.append(summary_type)
-
-        # Process all summaries in batch
-        if file_paths:
-            summaries = await qa_controller.get_summaries_batch(file_paths, summary_classes)
-            for summary_type, summary in zip(summary_types, summaries):
-                material_controller.append_summary(file_id, summary)
-                print(f"Added summary for {summary_type}")
-
-        print(f"\nCompleted processing material {material_idx}/{total_materials} (ID: {file_id})")
-
-
-def output_question_data(file_id: str | None = None, process_all: bool = False):
-    """Output question data to a folder.
-
-    Args:
-        file_id: ID of a specific file to process. If None, will process all files.
-        process_all: Must be set to True to process all files when file_id is None.
-    """
-    if file_id is None and not process_all:
-        raise ValueError("Must set process_all=True to process all files when file_id is None")
-
-    material_controller = initialize_controllers()
-    output_folder_path = Path("./output_question_data")
-    output_folder_path.mkdir(exist_ok=True)
-
-    # Fetch material folder first
-    material_controller.fetch_material_folder(Path("./pdf_data"))
-    material_table = material_controller.get_material_table()
-
-    # Filter material table if specific file_id is provided
-    if file_id is not None:
-        if file_id not in material_table:
-            raise ValueError(f"File ID {file_id} not found in material table")
-
-    material_controller.output_material_as_folder(output_folder_path)
-
-
-async def fetch_material_add_parsing(file_id: str | None = None, process_all: bool = False):
-    """Fetch material and add parsing results to each material.
-
-    Args:
-        file_id: ID of a specific file to process. If None, will process all files.
-        process_all: Must be set to True to process all files when file_id is None.
-    """
-    if file_id is None and not process_all:
-        raise ValueError("Must set process_all=True to process all files when file_id is None")
-
-    material_controller = initialize_controllers()
-    parsing_controller = ParsingController()
-
-    # Create markdown folder if it doesn't exist
-    markdown_folder = Path("./markdown")
-    markdown_folder.mkdir(exist_ok=True)
-
-    # Fetch material folder first
-    material_controller.fetch_material_folder(Path("./pdf_data"))
-    material_table = material_controller.get_material_table()
-
-    # Filter material table if specific file_id is provided
-    if file_id is not None:
-        if file_id not in material_table:
-            raise ValueError(f"File ID {file_id} not found in material table")
-        material_table = {file_id: material_table[file_id]}
-
-    total_materials = len(material_table)
-    for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
-        print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
-
-        # Skip if parsing results already exist
-        if file_meta["parsing_results"]["sections"] is not None:
-            print(f"Skipping {file_id} as parsing results already exist.")
-            continue
-
-        # Process PDF to markdown first
-        pdf_path = file_meta["file_path"]
-        markdown_path = process_pdf_file(str(pdf_path), str(markdown_folder))
-
-        if markdown_path is None:
-            print(f"Failed to process PDF to markdown for {file_id}")
-            continue
-
-        # Get parsing results from markdown file
-        print(f"Processing markdown file for {file_id}")
-        sections, images, tables = parsing_controller.get_sections_from_text_file(
-            str(markdown_path)
-        )
-
-        # Update parsing results
-        file_meta["parsing_results"] = {"sections": sections, "images": images, "tables": tables}
-
-        # Save updated file meta
-        target_path = material_controller.db_controller.get_target_path(
-            [material_controller.db_table_name, str(file_id)]
-        )
-        material_controller.db_controller.save_data(file_meta, target_path)
-
-        print(f"Added parsing results for material {file_id}")
-
-    print(f"\nCompleted processing {total_materials} materials")
+    return False, None

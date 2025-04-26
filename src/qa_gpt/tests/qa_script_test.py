@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.qa_gpt.core.controller.fetch_controller import FetchController
 from src.qa_gpt.core.objects.questions import (
     Choice,
     MultipleChoiceQuestion,
@@ -15,11 +16,6 @@ from src.qa_gpt.core.objects.summaries import (
     Motivation,
     StandardSummary,
     TechnicalSummary,
-)
-from src.qa_gpt.core.utils.fetch_utils import (
-    fetch_material_add_sets,
-    fetch_material_add_summary,
-    output_question_data,
 )
 
 
@@ -35,7 +31,7 @@ def test_pdf_folder(tmp_path):
 @pytest.fixture
 def mock_qa_controller():
     controller = MagicMock()
-    with patch("src.qa_gpt.core.utils.fetch_utils.QAController") as mock:
+    with patch("src.qa_gpt.core.controller.fetch_controller.QAController") as mock:
         mock.return_value = controller
         yield controller
 
@@ -43,7 +39,7 @@ def mock_qa_controller():
 @pytest.fixture
 def mock_material_controller():
     controller = MagicMock()
-    with patch("src.qa_gpt.core.utils.fetch_utils.MaterialController") as mock:
+    with patch("src.qa_gpt.core.controller.fetch_controller.MaterialController") as mock:
         mock.return_value = controller
         yield controller
 
@@ -51,7 +47,7 @@ def mock_material_controller():
 @pytest.fixture
 def mock_db_controller():
     controller = MagicMock()
-    with patch("src.qa_gpt.core.utils.fetch_utils.LocalDatabaseController") as mock:
+    with patch("src.qa_gpt.core.controller.fetch_controller.LocalDatabaseController") as mock:
         mock.return_value = controller
         yield controller
 
@@ -100,9 +96,10 @@ async def test_fetch_material_add_summary_flow(
     mock_qa_controller.get_summaries_batch.side_effect = mock_get_summaries_batch
 
     # Run the function
-    with patch("src.qa_gpt.core.utils.fetch_utils.Path") as mock_path:
+    with patch("src.qa_gpt.core.controller.fetch_controller.Path") as mock_path:
         mock_path.return_value = test_pdf_folder
-        await fetch_material_add_summary(process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_summary(process_all=True)
 
     # Verify function calls
     mock_material_controller.fetch_material_folder.assert_called_once_with(test_pdf_folder)
@@ -176,9 +173,10 @@ async def test_fetch_material_add_sets_flow(
     mock_qa_controller.get_questions_batch.side_effect = mock_get_questions_batch
 
     # Run the function
-    with patch("src.qa_gpt.core.utils.fetch_utils.Path") as mock_path:
+    with patch("src.qa_gpt.core.controller.fetch_controller.Path") as mock_path:
         mock_path.return_value = test_pdf_folder
-        await fetch_material_add_sets(process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_sets(process_all=True)
 
     # Verify function calls
     mock_material_controller.fetch_material_folder.assert_called_once_with(test_pdf_folder)
@@ -191,7 +189,8 @@ def test_output_question_data_flow(
     output_folder = Path("./output_question_data")
 
     # Run the function
-    output_question_data(process_all=True)
+    fetch_controller = FetchController()
+    fetch_controller.output_question_data(process_all=True)
 
     # Verify the flow
     mock_material_controller.output_material_as_folder.assert_called_once_with(output_folder)
@@ -287,10 +286,11 @@ async def test_full_script_flow(
     mock_qa_controller.get_questions_batch.side_effect = mock_get_questions_batch
 
     # Run all functions in sequence
-    with patch("src.qa_gpt.core.utils.fetch_utils.Path") as mock_path:
+    with patch("src.qa_gpt.core.controller.fetch_controller.Path") as mock_path:
         mock_path.return_value = test_pdf_folder
-        await fetch_material_add_summary(process_all=True)
-        await fetch_material_add_sets(process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_summary(process_all=True)
+        await fetch_controller.fetch_material_add_sets(process_all=True)
 
     # Verify function calls
     assert mock_material_controller.fetch_material_folder.call_count == 2
@@ -306,6 +306,7 @@ async def test_fetch_material_add_summary_single_file(
         "StandardSummary": MagicMock(),  # Already exists
         "TechnicalSummary": None,  # Will be added
         "InnovationSummary": None,  # Will be added
+        "MetaDataSummary": None,  # Will be added
     }
     file_meta.__getitem__.return_value = str(test_pdf_folder / "test.pdf")
 
@@ -343,16 +344,15 @@ async def test_fetch_material_add_summary_single_file(
     mock_qa_controller.get_summaries_batch.side_effect = mock_get_summaries_batch
 
     # Run the function with single file mode
-    with patch("src.qa_gpt.core.utils.fetch_utils.Path") as mock_path:
+    with patch("src.qa_gpt.core.controller.fetch_controller.Path") as mock_path:
         mock_path.return_value = test_pdf_folder
-        await fetch_material_add_summary(file_id="test_id", process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_summary(file_id="test_id", process_all=True)
 
     # Verify function calls
     mock_material_controller.fetch_material_folder.assert_called_once_with(test_pdf_folder)
     # Verify that append_summary was only called for the specified file
-    assert (
-        mock_material_controller.append_summary.call_count == 2
-    )  # For Technical and Innovation summaries
+    assert mock_material_controller.append_summary.call_count == 1  # Only for StandardSummary
 
 
 @pytest.mark.asyncio
@@ -426,9 +426,10 @@ async def test_fetch_material_add_sets_single_file(
     mock_qa_controller.get_questions_batch.side_effect = mock_get_questions_batch
 
     # Run the function with single file mode
-    with patch("src.qa_gpt.core.utils.fetch_utils.Path") as mock_path:
+    with patch("src.qa_gpt.core.controller.fetch_controller.Path") as mock_path:
         mock_path.return_value = test_pdf_folder
-        await fetch_material_add_sets(file_id="test_id", process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_sets(file_id="test_id", process_all=True)
 
     # Verify function calls
     mock_material_controller.fetch_material_folder.assert_called_once_with(test_pdf_folder)
@@ -447,7 +448,8 @@ def test_output_question_data_single_file(
     }
 
     # Run the function with single file mode
-    output_question_data(file_id="test_id", process_all=True)
+    fetch_controller = FetchController()
+    fetch_controller.output_question_data(file_id="test_id", process_all=True)
 
     # Verify the flow
     mock_material_controller.output_material_as_folder.assert_called_once_with(
@@ -464,7 +466,8 @@ async def test_fetch_material_add_summary_invalid_file_id(
 
     # Run the function with invalid file_id
     with pytest.raises(ValueError, match="File ID invalid_id not found in material table"):
-        await fetch_material_add_summary(file_id="invalid_id", process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_summary(file_id="invalid_id", process_all=True)
 
 
 @pytest.mark.asyncio
@@ -476,7 +479,8 @@ async def test_fetch_material_add_sets_invalid_file_id(
 
     # Run the function with invalid file_id
     with pytest.raises(ValueError, match="File ID invalid_id not found in material table"):
-        await fetch_material_add_sets(file_id="invalid_id", process_all=True)
+        fetch_controller = FetchController()
+        await fetch_controller.fetch_material_add_sets(file_id="invalid_id", process_all=True)
 
 
 def test_output_question_data_invalid_file_id(
@@ -487,4 +491,5 @@ def test_output_question_data_invalid_file_id(
 
     # Run the function with invalid file_id
     with pytest.raises(ValueError, match="File ID invalid_id not found in material table"):
-        output_question_data(file_id="invalid_id", process_all=True)
+        fetch_controller = FetchController()
+        fetch_controller.output_question_data(file_id="invalid_id", process_all=True)
