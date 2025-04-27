@@ -6,11 +6,9 @@ from src.qa_gpt.core.controller.db_controller import (
 )
 from src.qa_gpt.core.controller.parsing_controller import ParsingController
 from src.qa_gpt.core.controller.qa_controller import QAController
-from src.qa_gpt.core.objects.summaries import (
-    InnovationSummary,
+from src.qa_gpt.core.objects.summaries import (  # InnovationSummary,; TechnicalSummary,
     MetaDataSummary,
     StandardSummary,
-    TechnicalSummary,
 )
 from src.qa_gpt.core.utils.fetch_utils import (
     _filter_material_table_by_file_id,
@@ -34,8 +32,8 @@ class FetchController:
         self.parsing_controller = ParsingController()
         self.summary_objects = [
             StandardSummary,
-            TechnicalSummary,
-            InnovationSummary,
+            # TechnicalSummary,
+            # InnovationSummary,
             MetaDataSummary,
         ]
 
