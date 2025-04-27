@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -217,3 +218,51 @@ class RAGController:
             )
 
         return self.text_store[index]
+
+    def save_state(self, state_path: Path) -> None:
+        """
+        Save the controller's state (index_path, text_store, model_name) to a file.
+
+        Args:
+            state_path: Path where to save the state file
+        """
+        state = {
+            "index_path": str(self.index_path) if self.index_path else None,
+            "text_store": self.text_store,
+            "model_name": self.model.get_name(),
+        }
+
+        with open(state_path, "w") as f:
+            json.dump(state, f)
+
+        # Save the FAISS index separately
+        if self.index_path:
+            self._save_index()
+
+        logger.info(f"Successfully saved RAGController state to {state_path}")
+
+    @classmethod
+    def load_state(cls, state_path: Path) -> "RAGController":
+        """
+        Load a RAGController instance from a saved state.
+
+        Args:
+            state_path: Path to the saved state file
+
+        Returns:
+            A new RAGController instance initialized with the saved state
+        """
+        with open(state_path) as f:
+            state = json.load(f)
+
+        # Create new controller instance
+        controller = cls(
+            model_name=state["model_name"],
+            index_path=Path(state["index_path"]) if state["index_path"] else None,
+        )
+
+        # Restore text store
+        controller.text_store = state["text_store"]
+
+        logger.info(f"Successfully loaded RAGController state from {state_path}")
+        return controller

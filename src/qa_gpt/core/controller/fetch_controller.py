@@ -6,6 +6,7 @@ from src.qa_gpt.core.controller.db_controller import (
 )
 from src.qa_gpt.core.controller.parsing_controller import ParsingController
 from src.qa_gpt.core.controller.qa_controller import QAController
+from src.qa_gpt.core.controller.rag_controller import RAGController
 from src.qa_gpt.core.objects.summaries import (  # InnovationSummary,; TechnicalSummary,
     MetaDataSummary,
     StandardSummary,
@@ -256,5 +257,72 @@ class FetchController:
             self.material_controller.db_controller.save_data(file_meta, target_path)
 
             print(f"Added parsing results for material {file_id}")
+
+        print(f"\nCompleted processing {total_materials} materials")
+
+    async def build_rag_index(self, file_id: str | None = None, process_all: bool = False):
+        """Build RAG index for parsed sections of materials.
+
+        Args:
+            file_id: ID of a specific file to process. If None, will process all files.
+            process_all: Must be set to True to process all files when file_id is None.
+        """
+        if file_id is None and not process_all:
+            raise ValueError("Must set process_all=True to process all files when file_id is None")
+
+        # Fetch material folder first
+        self.material_controller.fetch_material_folder(Path("./pdf_data"))
+        material_table = self.material_controller.get_material_table()
+
+        # Filter material table if specific file_id is provided
+        material_table = _filter_material_table_by_file_id(material_table, file_id)
+
+        total_materials = len(material_table)
+        for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
+            print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
+
+            # Skip if parsing results don't exist
+            if file_meta["parsing_results"]["sections"] is None:
+                print(f"Skipping {file_id} as parsing results don't exist.")
+                continue
+
+            # Skip if RAG state already exists
+            if file_meta.rag_state is not None and file_meta.rag_state.exists():
+                print(f"Skipping {file_id} as RAG state already exists.")
+                continue
+
+            try:
+                # Create RAG state folder if it doesn't exist
+                rag_state_folder = Path("./rag_state")
+                rag_state_folder.mkdir(exist_ok=True)
+                rag_state_path = rag_state_folder / f"{file_id}_rag_state.json"
+
+                # Initialize RAG controller
+                rag_controller = RAGController(index_path=rag_state_path)
+
+                # Add sections to RAG index
+                sections = file_meta["parsing_results"]["sections"]
+                texts = [section["content"] for section in sections]
+                rag_controller.add_texts(texts)
+
+                # Save RAG state
+                rag_controller.save_state(rag_state_path)
+
+                # Update file meta with RAG state path
+                file_meta.rag_state = rag_state_path
+
+                # Save updated file meta
+                target_path = self.material_controller.db_controller.get_target_path(
+                    [self.material_controller.db_table_name, str(file_id)]
+                )
+                self.material_controller.db_controller.save_data(file_meta, target_path)
+
+                print(f"Added RAG index for material {file_id}")
+            except Exception as e:
+                print(f"Error processing {file_id}: {str(e)}")
+                # Clean up any partially created state file
+                if rag_state_path.exists():
+                    rag_state_path.unlink()
+                continue
 
         print(f"\nCompleted processing {total_materials} materials")
