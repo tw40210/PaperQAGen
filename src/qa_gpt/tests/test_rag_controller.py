@@ -1,5 +1,3 @@
-import os
-import pickle
 import tempfile
 from pathlib import Path
 
@@ -10,25 +8,24 @@ from src.qa_gpt.core.controller.rag_controller import RAGController
 
 
 @pytest.fixture
-def temp_index_path():
-    """Create a temporary file for the FAISS index."""
-    with tempfile.NamedTemporaryFile(suffix=".faiss", delete=False) as tmp:
-        return Path(tmp.name)
+def temp_rag_folder():
+    """Create a temporary folder for RAG state files."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        return Path(tmp_dir)
 
 
 @pytest.fixture
-def temp_text_store_path():
-    """Create a temporary file for the text store."""
-    with tempfile.NamedTemporaryFile(suffix=".texts", delete=False) as tmp:
-        return Path(tmp.name)
+def test_file_id():
+    """Return a test file ID."""
+    return "test_file_123"
 
 
 @pytest.fixture
-def rag_controller(temp_index_path, temp_text_store_path):
-    """Create a RAG controller with a temporary index path."""
-    controller = RAGController(index_path=temp_index_path)
-    # Store the text store path for cleanup
-    controller._temp_text_store_path = temp_text_store_path
+def rag_controller(temp_rag_folder, test_file_id):
+    """Create a RAG controller with a temporary folder."""
+    controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
     return controller
 
 
@@ -92,25 +89,22 @@ def test_empty_search(rag_controller):
     assert len(results) == 0
 
 
-def test_persistence(temp_index_path, temp_text_store_path):
+def test_persistence(temp_rag_folder, test_file_id):
     """Test saving and loading the index and text store."""
     # Create first controller and add vectors and texts
-    controller1 = RAGController(index_path=temp_index_path)
+    controller1 = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
     vectors = np.random.rand(2, 384).astype(np.float32)  # all-MiniLM-L6-v2 has 384 dimensions
     texts = ["Test text 1", "Test text 2"]
     controller1.add_vectors(vectors)
     controller1.add_texts(texts)
 
-    # Save text store separately for testing
-    with open(temp_text_store_path, "wb") as f:
-        pickle.dump(controller1.text_store, f)
+    # Save state
+    controller1.save_state(controller1.state_path)
 
-    # Create second controller and load the index
-    controller2 = RAGController(index_path=temp_index_path)
-
-    # Load text store separately for testing
-    with open(temp_text_store_path, "rb") as f:
-        controller2.text_store = pickle.load(f)
+    # Create second controller by loading the state
+    controller2 = RAGController.load_state(controller1.state_path)
 
     # Check if vectors were loaded
     assert controller2.index.ntotal == 4  # 2 vectors + 2 texts
@@ -139,14 +133,6 @@ def test_invalid_vector_dimension():
 
     with pytest.raises(ValueError):
         controller.add_vectors(vectors)
-
-
-def test_cleanup(temp_index_path, temp_text_store_path):
-    """Clean up the temporary index and text store files."""
-    if temp_index_path.exists():
-        os.unlink(temp_index_path)
-    if temp_text_store_path.exists():
-        os.unlink(temp_text_store_path)
 
 
 # New tests for text functionality

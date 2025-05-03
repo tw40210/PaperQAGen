@@ -286,6 +286,7 @@ class MaterialController:
             meta_dict.pop("mc_question_sets")
             meta_dict.pop("summaries")
             meta_dict.pop("parsing_results")
+            meta_dict.pop("rag_state")
 
             mc_question_sets = material_table[str(material_id)].mc_question_sets
             summaries = material_table[str(material_id)].summaries

@@ -364,7 +364,7 @@ async def test_fetch_material_add_sets_single_file(
     file_meta.mc_question_sets = {
         "StandardSummary_motivation_0": MagicMock(),  # Already exists
         "StandardSummary_conclusion_0": MagicMock(),  # Already exists
-        "StandardSummary_bullet_points_0": MagicMock(),  # Already exists
+        # "StandardSummary_bullet_points_0" is not set, so it should be processed
     }
 
     # Create mock summaries with model_dump
@@ -435,6 +435,8 @@ async def test_fetch_material_add_sets_single_file(
     mock_material_controller.fetch_material_folder.assert_called_once_with(test_pdf_folder)
     # Verify that append_mc_question_set was only called for the specified file
     assert mock_material_controller.append_mc_question_set.call_count > 0
+    # Verify that the bullet_points field was processed
+    assert "StandardSummary_bullet_points" in file_meta.mc_question_sets
 
 
 def test_output_question_data_single_file(

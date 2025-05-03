@@ -1,4 +1,5 @@
 /output/*
+rag_state/
 /model_checkpoint/
 /.idea_back/
 /Roadmap.md
@@ -34,3 +35,4 @@ src/qa_gpt/chat/private_keys.py
 *.xlsx
 *.pptx
 *.md
+

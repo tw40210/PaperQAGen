@@ -223,7 +223,7 @@ class FetchController:
 
         total_materials = len(material_table)
         for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
-            print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
+            print(f"\nProcessing material parsing {material_idx}/{total_materials} (ID: {file_id})")
 
             # Skip if parsing results already exist
             if file_meta["parsing_results"]["sections"] is not None:
@@ -239,13 +239,13 @@ class FetchController:
 
             # Get parsing results from markdown file
             print(f"Processing markdown file for {file_id}")
-            sections, images, tables = self.parsing_controller.get_sections_from_text_file(
+            sections_object, images, tables = self.parsing_controller.get_sections_from_text_file(
                 str(markdown_path)
             )
 
             # Update parsing results
             file_meta["parsing_results"] = {
-                "sections": sections,
+                "sections": sections_object.sections,
                 "images": images,
                 "tables": tables,
             }
@@ -279,7 +279,7 @@ class FetchController:
 
         total_materials = len(material_table)
         for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
-            print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
+            print(f"\nProcessing material RAG {material_idx}/{total_materials} (ID: {file_id})")
 
             # Skip if parsing results don't exist
             if file_meta["parsing_results"]["sections"] is None:
@@ -292,24 +292,19 @@ class FetchController:
                 continue
 
             try:
-                # Create RAG state folder if it doesn't exist
-                rag_state_folder = Path("./rag_state")
-                rag_state_folder.mkdir(exist_ok=True)
-                rag_state_path = rag_state_folder / f"{file_id}_rag_state.json"
-
                 # Initialize RAG controller
-                rag_controller = RAGController(index_path=rag_state_path)
+                rag_controller = RAGController(file_id=file_id)
 
                 # Add sections to RAG index
                 sections = file_meta["parsing_results"]["sections"]
-                texts = [section["content"] for section in sections]
+                texts = [str(section) for section in sections]
                 rag_controller.add_texts(texts)
 
                 # Save RAG state
-                rag_controller.save_state(rag_state_path)
+                rag_controller.save_state(rag_controller.state_path)
 
                 # Update file meta with RAG state path
-                file_meta.rag_state = rag_state_path
+                file_meta.rag_state = rag_controller.state_path
 
                 # Save updated file meta
                 target_path = self.material_controller.db_controller.get_target_path(
@@ -321,8 +316,8 @@ class FetchController:
             except Exception as e:
                 print(f"Error processing {file_id}: {str(e)}")
                 # Clean up any partially created state file
-                if rag_state_path.exists():
-                    rag_state_path.unlink()
+                if rag_controller.state_path.exists():
+                    rag_controller.state_path.unlink()
                 continue
 
         print(f"\nCompleted processing {total_materials} materials")

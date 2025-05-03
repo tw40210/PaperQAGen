@@ -1,5 +1,5 @@
-import json
 import logging
+import pickle
 from pathlib import Path
 
 import faiss
@@ -10,24 +10,58 @@ logger = logging.getLogger(__name__)
 
 
 class RAGController:
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", index_path: Path = None):
+    def __init__(
+        self,
+        model_name: str = "all-MiniLM-L6-v2",
+        rag_state_folder_path: str = "./rag_state",
+        file_id: str = None,
+    ):
         """
         Initialize the RAG controller with FAISS index.
 
         Args:
             model_name: Name of the sentence transformer model to use for text embeddings
-            index_path: Path to save/load the FAISS index. If None, index will be kept in memory
+            rag_state_folder_path: Path to the folder containing RAG state files
+            file_id: File ID to load specific RAG state and index. If None, will create a new index in memory.
         """
-        self.index_path = index_path
+        self.rag_state_folder = Path(rag_state_folder_path)
+        self.rag_state_folder.mkdir(exist_ok=True)
+        self.file_id = file_id
+
+        # Set up paths based on file_id
+        if file_id is not None:
+            self.index_path = self.rag_state_folder / f"{file_id}_rag_index.pkl"
+            self.state_path = self.rag_state_folder / f"{file_id}_rag_state.pkl"
+        else:
+            self.index_path = None
+            self.state_path = None
+
         self.index = None
         self.model = SentenceTransformer(model_name)
+        self.model_name = model_name
         self.dimension = self.model.get_sentence_embedding_dimension()
         self.text_store = []  # Store original texts
 
-        if index_path and index_path.exists():
+        if self.index_path and self.index_path.exists():
             self._load_index()
         else:
             self._init_index()
+
+    @classmethod
+    def from_file_id(
+        cls, file_id: str, rag_state_folder_path: str = "./rag_state"
+    ) -> "RAGController":
+        """
+        Initialize a RAGController instance for a specific file.
+
+        Args:
+            file_id: The ID of the file to load RAG state for
+            rag_state_folder_path: Path to the folder containing RAG state files
+
+        Returns:
+            A new RAGController instance initialized for the specified file
+        """
+        return cls(file_id=file_id, rag_state_folder_path=rag_state_folder_path)
 
     def _init_index(self):
         """Initialize a new FAISS index."""
@@ -229,11 +263,13 @@ class RAGController:
         state = {
             "index_path": str(self.index_path) if self.index_path else None,
             "text_store": self.text_store,
-            "model_name": self.model.get_name(),
+            "model_name": self.model_name,
+            "file_id": self.file_id,
+            "rag_state_folder_path": str(self.rag_state_folder),
         }
 
-        with open(state_path, "w") as f:
-            json.dump(state, f)
+        with open(state_path, "wb") as f:
+            pickle.dump(state, f)
 
         # Save the FAISS index separately
         if self.index_path:
@@ -252,17 +288,26 @@ class RAGController:
         Returns:
             A new RAGController instance initialized with the saved state
         """
-        with open(state_path) as f:
-            state = json.load(f)
+        with open(state_path, "rb") as f:
+            state = pickle.load(f)
 
         # Create new controller instance
         controller = cls(
             model_name=state["model_name"],
-            index_path=Path(state["index_path"]) if state["index_path"] else None,
+            file_id=state["file_id"] if "file_id" in state else None,
+            rag_state_folder_path=(
+                state["rag_state_folder_path"]
+                if "rag_state_folder_path" in state
+                else "./rag_state"
+            ),
         )
 
         # Restore text store
         controller.text_store = state["text_store"]
+
+        # Load the index if it exists
+        if controller.index_path and controller.index_path.exists():
+            controller._load_index()
 
         logger.info(f"Successfully loaded RAGController state from {state_path}")
         return controller

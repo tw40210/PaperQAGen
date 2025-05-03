@@ -50,6 +50,7 @@ async def handle_file_upload():
                 fetch_controller = FetchController()
 
                 await fetch_controller.fetch_material_add_parsing(file_id=file_id)
+                await fetch_controller.build_rag_index(file_id=file_id)
                 await fetch_controller.fetch_material_add_summary(file_id=file_id)
                 await fetch_controller.fetch_material_add_sets(file_id=file_id)
                 fetch_controller.output_question_data(file_id=file_id)
