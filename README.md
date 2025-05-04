@@ -7,3 +7,12 @@
 
 # Launch
 1. streamlit run ./src/qa_gpt/script/QA_ui.py
+
+# TODO
+1. Use rag to get relative indexes for summaries and question generation.
+2. Include corresponding tables with the selected indexes
+3. Daily upload limit
+
+
+# Future roadmap
+1. Allow users to customize the question sets and summaries. (Adding, updating, modifying, deleting)
