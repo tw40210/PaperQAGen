@@ -1,11 +1,11 @@
 import asyncio
 import time
-from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.qa_gpt.core.controller.qa_controller import QAController
+from src.qa_gpt.core.controller.rag_controller import RAGController
 from src.qa_gpt.core.objects.questions import (
     Choice,
     MultipleChoiceQuestion,
@@ -20,16 +20,21 @@ from src.qa_gpt.core.objects.summaries import (
 
 
 @pytest.fixture
+def test_file_id():
+    return "test_file_123"
+
+
+@pytest.fixture
 def qa_controller():
     controller = QAController()
-    # Mock the _pdf_to_text method to avoid file operations
-    controller.preprocess_controller._pdf_to_text = MagicMock(return_value="Test PDF content")
     return controller
 
 
 @pytest.fixture
-def test_file_path():
-    return Path("test.pdf")
+def mock_rag_controller():
+    controller = MagicMock(spec=RAGController)
+    controller.search_text.return_value = [("Test content", 0.1)]
+    return controller
 
 
 @pytest.fixture
@@ -140,43 +145,48 @@ def mock_questions():
     )
 
 
-def test_get_summary(qa_controller, test_file_path, mock_summary, mocker):
+def test_get_summary(qa_controller, test_file_id, mock_summary, mocker, mock_rag_controller):
     # Setup mock
     mock_get_response = mocker.patch(
         "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
     )
     mock_get_response.return_value = mock_summary
 
-    # Test
-    result = asyncio.run(qa_controller.get_summary(test_file_path, StandardSummary))
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    # Assertions
-    assert isinstance(result, StandardSummary)
-    assert result == mock_summary
-    mock_get_response.assert_called_once()
-    qa_controller.preprocess_controller._pdf_to_text.assert_called_once_with(test_file_path)
+        # Test
+        result = asyncio.run(qa_controller.get_summary(test_file_id, StandardSummary))
+
+        # Assertions
+        assert isinstance(result, StandardSummary)
+        assert result == mock_summary
+        mock_get_response.assert_called_once()
+        mock_rag.assert_called_once_with(test_file_id)
+        mock_rag.return_value.search_text.assert_called_once_with("summary", k=5)
 
 
-def test_get_questions(qa_controller, test_file_path, mock_questions, mocker):
+def test_get_questions(qa_controller, test_file_id, mock_questions, mocker, mock_rag_controller):
     # Setup mock
     mock_get_response = mocker.patch(
         "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
     )
     mock_get_response.return_value = mock_questions
 
-    # Test
-    result = asyncio.run(qa_controller.get_questions(test_file_path, "test_field", "test_value"))
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    # Assertions
-    assert isinstance(result, MultipleChoiceQuestionSet)
-    assert result == mock_questions
-    assert mock_get_response.call_count == 2
-    qa_controller.preprocess_controller._pdf_to_text.assert_called_once_with(test_file_path)
+        # Test
+        result = asyncio.run(qa_controller.get_questions(test_file_id, "test_field", "test_value"))
 
-
-def test_preprocess_controller_initialization(qa_controller):
-    """Test that the preprocess controller is properly initialized"""
-    assert qa_controller.preprocess_controller is not None
+        # Assertions
+        assert isinstance(result, MultipleChoiceQuestionSet)
+        assert result == mock_questions
+        assert mock_get_response.call_count == 2
+        assert (
+            mock_rag.call_count == 2
+        )  # Called once for get_questions and once for get_material_clips_for_topic
+        mock_rag.return_value.search_text.assert_called_with("test_value", k=5)
 
 
 def test_message_templates_initialization(qa_controller):
@@ -194,61 +204,9 @@ def test_message_templates_initialization(qa_controller):
     assert "content" in qa_controller.user_input_temp
 
 
-def test_preprocess_integration(qa_controller, test_file_path, mocker):
-    """Test that preprocessing is properly integrated with the controller"""
-    # Setup
-    mock_preprocess = mocker.patch(
-        "src.qa_gpt.core.controller.qa_controller.PreprocessController.preprocess"
-    )
-    mock_preprocess.return_value = "Test content"
-
-    # Test
-    asyncio.run(qa_controller.get_summary(test_file_path, StandardSummary))
-
-    # Assertions
-    mock_preprocess.assert_called_once_with(test_file_path)
-    assert mock_preprocess.call_count == 1
-
-
 @pytest.mark.asyncio
-async def test_get_summary_async(qa_controller, test_file_path, mock_summary, mocker):
-    # Setup mock
-    mock_get_response = mocker.patch(
-        "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
-    )
-    mock_get_response.return_value = mock_summary
-
-    # Test
-    result = await qa_controller.get_summary(test_file_path, StandardSummary)
-
-    # Assertions
-    assert isinstance(result, StandardSummary)
-    assert result == mock_summary
-    mock_get_response.assert_called_once()
-    qa_controller.preprocess_controller._pdf_to_text.assert_called_once_with(test_file_path)
-
-
-@pytest.mark.asyncio
-async def test_get_questions_async(qa_controller, test_file_path, mock_questions, mocker):
-    # Setup mock
-    mock_get_response = mocker.patch(
-        "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
-    )
-    mock_get_response.return_value = mock_questions
-
-    # Test
-    result = await qa_controller.get_questions(test_file_path, "test_field", "test_value")
-
-    # Assertions
-    assert isinstance(result, MultipleChoiceQuestionSet)
-    assert result == mock_questions
-    assert mock_get_response.call_count == 2
-    qa_controller.preprocess_controller._pdf_to_text.assert_called_once_with(test_file_path)
-
-
-@pytest.mark.asyncio
-async def test_get_summaries_batch_rate_limiting(
-    qa_controller, test_file_path, mock_summary, mocker
+async def test_get_summary_async(
+    qa_controller, test_file_id, mock_summary, mocker, mock_rag_controller
 ):
     # Setup mock
     mock_get_response = mocker.patch(
@@ -256,25 +214,49 @@ async def test_get_summaries_batch_rate_limiting(
     )
     mock_get_response.return_value = mock_summary
 
-    # Test with multiple files and summary classes
-    file_paths = [test_file_path, test_file_path, test_file_path]
-    summary_classes = [StandardSummary, StandardSummary, StandardSummary]
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    start_time = time.time()
-    results = await qa_controller.get_summaries_batch(file_paths, summary_classes)
-    end_time = time.time()
+        # Test
+        result = await qa_controller.get_summary(test_file_id, StandardSummary)
 
-    # Assertions
-    assert len(results) == 3
-    assert all(isinstance(result, StandardSummary) for result in results)
-    assert mock_get_response.call_count == 3
-    # Check that the total time is at least 2 seconds (3 calls with 1 second delay between each)
-    assert end_time - start_time >= 2.0
+        # Assertions
+        assert isinstance(result, StandardSummary)
+        assert result == mock_summary
+        mock_get_response.assert_called_once()
+        mock_rag.assert_called_once_with(test_file_id)
+        mock_rag.return_value.search_text.assert_called_once_with("summary", k=5)
+
+
+@pytest.mark.asyncio
+async def test_get_questions_async(
+    qa_controller, test_file_id, mock_questions, mocker, mock_rag_controller
+):
+    # Setup mock
+    mock_get_response = mocker.patch(
+        "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
+    )
+    mock_get_response.return_value = mock_questions
+
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
+
+        # Test
+        result = await qa_controller.get_questions(test_file_id, "test_field", "test_value")
+
+        # Assertions
+        assert isinstance(result, MultipleChoiceQuestionSet)
+        assert result == mock_questions
+        assert mock_get_response.call_count == 2
+        assert (
+            mock_rag.call_count == 2
+        )  # Called once for get_questions and once for get_material_clips_for_topic
+        mock_rag.return_value.search_text.assert_called_with("test_value", k=5)
 
 
 @pytest.mark.asyncio
 async def test_get_questions_batch_rate_limiting(
-    qa_controller, test_file_path, mock_questions, mocker
+    qa_controller, test_file_id, mock_questions, mocker, mock_rag_controller
 ):
     # Setup mock
     mock_get_response = mocker.patch(
@@ -282,37 +264,46 @@ async def test_get_questions_batch_rate_limiting(
     )
     mock_get_response.return_value = mock_questions
 
-    # Test with multiple files and fields
-    file_paths = [test_file_path, test_file_path, test_file_path]
-    field_names = ["field1", "field2", "field3"]
-    field_values = ["value1", "value2", "value3"]
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    start_time = time.time()
-    results = await qa_controller.get_questions_batch(file_paths, field_names, field_values)
-    end_time = time.time()
+        # Test with multiple files and fields
+        file_ids = [test_file_id, test_file_id, test_file_id]
+        field_names = ["field1", "field2", "field3"]
+        field_values = ["value1", "value2", "value3"]
 
-    # Assertions
-    assert len(results) == 3
-    assert all(isinstance(result, MultipleChoiceQuestionSet) for result in results)
-    assert mock_get_response.call_count == 6  # 2 calls per file/field combination
-    # Check that the total time is at least 2 seconds (3 calls with 1 second delay between each)
-    assert end_time - start_time >= 2.0
+        start_time = time.time()
+        results = await qa_controller.get_questions_batch(file_ids, field_names, field_values)
+        end_time = time.time()
+
+        # Assertions
+        assert len(results) == 3
+        assert all(isinstance(result, MultipleChoiceQuestionSet) for result in results)
+        assert mock_get_response.call_count == 6  # 2 calls per file/field combination
+        assert (
+            mock_rag.call_count == 6
+        )  # Called twice per file (once for get_questions and once for get_material_clips_for_topic)
+        # Check that the total time is at least 2 seconds (3 calls with 1 second delay between each)
+        assert end_time - start_time >= 2.0
 
 
 @pytest.mark.asyncio
-async def test_async_error_handling(qa_controller, test_file_path, mocker):
+async def test_async_error_handling(qa_controller, test_file_id, mocker, mock_rag_controller):
     # Setup mock to raise an exception
     mock_get_response = mocker.patch(
         "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
     )
     mock_get_response.side_effect = Exception("Test error")
 
-    # Test error handling in get_summary
-    with pytest.raises(Exception) as exc_info:
-        await qa_controller.get_summary(test_file_path, StandardSummary)
-    assert str(exc_info.value) == "Test error"
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    # Test error handling in get_questions
-    with pytest.raises(Exception) as exc_info:
-        await qa_controller.get_questions(test_file_path, "test_field", "test_value")
-    assert str(exc_info.value) == "Test error"
+        # Test error handling in get_summary
+        with pytest.raises(Exception) as exc_info:
+            await qa_controller.get_summary(test_file_id, StandardSummary)
+        assert str(exc_info.value) == "Test error"
+
+        # Test error handling in get_questions
+        with pytest.raises(Exception) as exc_info:
+            await qa_controller.get_questions(test_file_id, "test_field", "test_value")
+        assert str(exc_info.value) == "Test error"

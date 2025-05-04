@@ -7,6 +7,7 @@ import PyPDF2
 from pydantic import BaseModel
 
 from src.qa_gpt.chat.chat import get_chat_gpt_response_structure_async
+from src.qa_gpt.core.controller.rag_controller import RAGController
 from src.qa_gpt.core.objects.questions import (
     MaterialClipsForTopic,
     MultipleChoiceQuestionSet,
@@ -17,12 +18,15 @@ T = TypeVar("T", bound=BaseModel)
 
 class BaseQAController(ABC):
     @abstractmethod
-    async def get_summary(self, file_path: Path, summary_class: type[T]) -> T:
+    async def get_summary(
+        self, file_id: str, summary_class: type[T], additional_context: str = ""
+    ) -> T:
         """Get a summary of the content from a file.
 
         Args:
-            file_path (Path): Path to the file to summarize
+            file_id (str): ID of the file to summarize
             summary_class (Type[T]): The Pydantic model class to use for the summary
+            additional_context (str): Additional context from markdown file, defaults to empty string
 
         Returns:
             T: A structured summary of the content
@@ -31,14 +35,15 @@ class BaseQAController(ABC):
 
     @abstractmethod
     async def get_questions(
-        self, file_path: Path, field_name: str, field_value: any
+        self, file_id: str, field_name: str, field_value: any, additional_context: str = ""
     ) -> MultipleChoiceQuestionSet:
         """Generate questions based on the content from a file and a specific field.
 
         Args:
-            file_path (Path): Path to the file to generate questions from
+            file_id (str): ID of the file to generate questions from
             field_name (str): Name of the field to generate questions for
             field_value (any): Value of the field to generate questions for
+            additional_context (str): Additional context from markdown file, defaults to empty string
 
         Returns:
             MultipleChoiceQuestionSet: A set of questions for the specified field
@@ -47,13 +52,20 @@ class BaseQAController(ABC):
 
     @abstractmethod
     async def get_summaries_batch(
-        self, file_paths: list[Path], summary_classes: list[type[T]]
+        self,
+        file_ids: list[str],
+        summary_classes: list[type[T]],
+        additional_contexts: list[str] = None,
     ) -> list[T]:
         pass
 
     @abstractmethod
     async def get_questions_batch(
-        self, file_paths: list[Path], field_names: list[str], field_values: list[Any]
+        self,
+        file_ids: list[str],
+        field_names: list[str],
+        field_values: list[Any],
+        additional_contexts: list[str] = None,
     ) -> list[MultipleChoiceQuestionSet]:
         pass
 
@@ -177,10 +189,17 @@ Remember: Your goal is to help learners understand the topic by providing the mo
             """,
         }
 
-    async def get_summary(self, file_path: Path, summary_class: type[T]) -> T:
-        material_text = self.preprocess_controller.preprocess(file_path)
+    async def get_summary(
+        self, file_id: str, summary_class: type[T], additional_context: str = ""
+    ) -> T:
+        rag_controller = RAGController.from_file_id(file_id)
+        # Get relevant content using search_text
+        relevant_content = rag_controller.search_text("summary", k=5)
+        material_text = "\n".join([text for text, _ in relevant_content])
+
         user_input = self.user_input_temp.copy()
-        user_input.update({"content": material_text})
+        context = f"{material_text}\n\nAdditional Context:\n{additional_context}"
+        user_input.update({"content": context})
         sys_summary_message = self.summary_message_temp.copy()
         sys_summary_message.update({"content": summary_class.prompt()})
 
@@ -188,10 +207,12 @@ Remember: Your goal is to help learners understand the topic by providing the mo
         result = await get_chat_gpt_response_structure_async(messages, res_obj=summary_class)
         return result
 
-    async def get_material_clips_for_topic(
-        self, file_path: Path, topic: str
-    ) -> MaterialClipsForTopic:
-        material_text = self.preprocess_controller.preprocess(file_path)
+    async def get_material_clips_for_topic(self, file_id: str, topic: str) -> MaterialClipsForTopic:
+        rag_controller = RAGController.from_file_id(file_id)
+        # Get relevant content using search_text
+        relevant_content = rag_controller.search_text(topic, k=5)
+        material_text = "\n".join([text for text, _ in relevant_content])
+
         user_input = self.user_input_temp.copy()
         user_input.update({"content": f"Material: {material_text}\n\nTopic: {topic}"})
         sys_material_clips_for_topic_message = self.material_clips_for_topic_temp.copy()
@@ -203,23 +224,29 @@ Remember: Your goal is to help learners understand the topic by providing the mo
         return result
 
     async def get_questions(
-        self, file_path: Path, field_name: str, field_value: any
+        self, file_id: str, field_name: str, field_value: any, additional_context: str = ""
     ) -> MultipleChoiceQuestionSet:
         """Generate questions based on the content from a file and a specific field.
 
         Args:
-            file_path (Path): Path to the file to generate questions from
+            file_id (str): ID of the file to generate questions from
             field_name (str): Name of the field to generate questions for
             field_value (any): Value of the field to generate questions for
+            additional_context (str): Additional context from markdown file, defaults to empty string
 
         Returns:
             MultipleChoiceQuestionSet: A set of questions for the specified field
         """
-        material_clips_for_topic = await self.get_material_clips_for_topic(file_path, field_value)
-        user_input = self.user_input_temp.copy()
+        # Create a new RAGController instance for get_material_clips_for_topic
+        # material_clips_for_topic = await self.get_material_clips_for_topic(file_id, field_value)
 
-        # Create context with the field name and value
-        context = f"Material: {material_clips_for_topic}\n\n{field_name.replace('_', ' ').title()}:\n{field_value}"
+        # Create a new RAGController instance for the main question generation
+        rag_controller = RAGController.from_file_id(file_id)
+        relevant_content = rag_controller.search_text(field_name, k=5)
+        material_text = "\n".join([text for text, _ in relevant_content])
+
+        user_input = self.user_input_temp.copy()
+        context = f"Material: \n\n{field_name.replace('_', ' ').title()}:\n{field_value}\n\nAdditional Context:\n{material_text}\n\n Additional; Context:\n{additional_context}"
         user_input.update({"content": context})
         messages = [self.question_message_temp.copy(), user_input]
         return await get_chat_gpt_response_structure_async(
@@ -227,20 +254,35 @@ Remember: Your goal is to help learners understand the topic by providing the mo
         )
 
     async def get_summaries_batch(
-        self, file_paths: list[Path], summary_classes: list[type[T]]
+        self,
+        file_ids: list[str],
+        summary_classes: list[type[T]],
+        additional_contexts: list[str] = None,
     ) -> list[T]:
         tasks = []
-        for file_path, summary_class in zip(file_paths, summary_classes):
-            tasks.append(self.get_summary(file_path, summary_class))
+        if additional_contexts is None:
+            additional_contexts = [""] * len(file_ids)
+        for file_id, summary_class, additional_context in zip(
+            file_ids, summary_classes, additional_contexts
+        ):
+            tasks.append(self.get_summary(file_id, summary_class, additional_context))
             await asyncio.sleep(3)  # Add 3 seconds delay between calls
         return await asyncio.gather(*tasks)
 
     async def get_questions_batch(
-        self, file_paths: list[Path], field_names: list[str], field_values: list[Any]
+        self,
+        file_ids: list[str],
+        field_names: list[str],
+        field_values: list[Any],
+        additional_contexts: list[str] = None,
     ) -> list[MultipleChoiceQuestionSet]:
         tasks = []
-        for file_path, field_name, field_value in zip(file_paths, field_names, field_values):
-            tasks.append(self.get_questions(file_path, field_name, field_value))
+        if additional_contexts is None:
+            additional_contexts = [""] * len(file_ids)
+        for file_id, field_name, field_value, additional_context in zip(
+            file_ids, field_names, field_values, additional_contexts
+        ):
+            tasks.append(self.get_questions(file_id, field_name, field_value, additional_context))
             await asyncio.sleep(3)  # Add 3 seconds delay between calls
         return await asyncio.gather(*tasks)
 

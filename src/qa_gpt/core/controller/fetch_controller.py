@@ -62,11 +62,20 @@ class FetchController:
                 f"Material {file_id} originally have {len(file_meta.mc_question_sets)} mc_questions sets."
             )
 
+            # Get markdown context if available
+            markdown_context = ""
+            if file_meta["parsing_results"]["sections"] is not None:
+                markdown_path = Path("./markdown") / f"{file_meta['file_name']}_{file_id}.md"
+                if markdown_path.exists():
+                    with open(markdown_path, encoding="utf-8") as f:
+                        markdown_context = f.read()
+
             # Prepare batch processing data
-            file_paths = []
+            file_ids = []
             field_names = []
             field_values = []
             prefixes = []
+            additional_contexts = []
 
             for summary_idx, summary_object in enumerate(self.summary_objects, 1):
                 # Skip if summary type doesn't exist
@@ -100,15 +109,16 @@ class FetchController:
                         continue
 
                     print(f"Processing field {field_idx}/{total_fields}: {field_name}")
-                    file_paths.append(file_meta["file_path"])
+                    file_ids.append(file_id)
                     field_names.append(field_name)
                     field_values.append(field_value)
                     prefixes.append(prefix)
+                    additional_contexts.append(markdown_context)
 
             # Process all questions in batch
-            if file_paths:
+            if file_ids:
                 question_sets = await self.qa_controller.get_questions_batch(
-                    file_paths, field_names, field_values
+                    file_ids, field_names, field_values, additional_contexts
                 )
                 for prefix, question_set in zip(prefixes, question_sets):
                     self.material_controller.append_mc_question_set(file_id, question_set, prefix)
@@ -141,10 +151,19 @@ class FetchController:
         for material_idx, (file_id, file_meta) in enumerate(material_table.items(), 1):
             print(f"\nProcessing material {material_idx}/{total_materials} (ID: {file_id})")
 
+            # Get markdown context if available
+            markdown_context = ""
+            if file_meta["parsing_results"]["sections"] is not None:
+                markdown_path = Path("./markdown") / f"{file_meta['file_name']}_{file_id}.md"
+                if markdown_path.exists():
+                    with open(markdown_path, encoding="utf-8") as f:
+                        markdown_context = f.read()
+
             # Prepare batch processing data
-            file_paths = []
+            file_ids = []
             summary_classes = []
             summary_types = []
+            additional_contexts = []
 
             for summary_idx, summary_object in enumerate(self.summary_objects, 1):
                 # Skip if summary type already exists
@@ -159,14 +178,15 @@ class FetchController:
                 print(
                     f"Processing summary {summary_idx}/{len(self.summary_objects )}: {summary_type}"
                 )
-                file_paths.append(file_meta["file_path"])
+                file_ids.append(file_id)
                 summary_classes.append(summary_object)
                 summary_types.append(summary_type)
+                additional_contexts.append(markdown_context)
 
             # Process all summaries in batch
-            if len(file_paths) > 0:
+            if len(file_ids) > 0:
                 summaries = await self.qa_controller.get_summaries_batch(
-                    file_paths, summary_classes
+                    file_ids, summary_classes, additional_contexts
                 )
                 for summary_type, summary in zip(summary_types, summaries):
                     self.material_controller.append_summary(file_id, summary)

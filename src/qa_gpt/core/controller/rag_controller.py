@@ -33,8 +33,7 @@ class RAGController:
             self.index_path = self.rag_state_folder / f"{file_id}_rag_index.pkl"
             self.state_path = self.rag_state_folder / f"{file_id}_rag_state.pkl"
         else:
-            self.index_path = None
-            self.state_path = None
+            raise ValueError("File ID is required to initialize RAGController")
 
         self.index = None
         self.model = SentenceTransformer(model_name)
@@ -61,7 +60,15 @@ class RAGController:
         Returns:
             A new RAGController instance initialized for the specified file
         """
-        return cls(file_id=file_id, rag_state_folder_path=rag_state_folder_path)
+        index_path = Path(rag_state_folder_path) / f"{file_id}_rag_index.pkl"
+        state_path = Path(rag_state_folder_path) / f"{file_id}_rag_state.pkl"
+
+        if index_path.exists() and state_path.exists():
+            return cls.load_state(state_path)
+        else:
+            raise ValueError(
+                f"RAG state files for file {file_id} not found in {rag_state_folder_path}"
+            )
 
     def _init_index(self):
         """Initialize a new FAISS index."""

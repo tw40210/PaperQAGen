@@ -1,10 +1,9 @@
-from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-from pytest_mock import MockerFixture
 
 from src.qa_gpt.core.controller.qa_controller import QAController
+from src.qa_gpt.core.controller.rag_controller import RAGController
 from src.qa_gpt.core.objects.summaries import (
     BulletPoint,
     Conclusion,
@@ -15,11 +14,15 @@ from src.qa_gpt.core.objects.summaries import (
 
 
 @pytest.fixture
-def qa_controller():
-    controller = QAController()
-    # Mock the _pdf_to_text method to avoid file operations
-    controller.preprocess_controller._pdf_to_text = MagicMock(return_value="Test PDF content")
+def mock_rag_controller():
+    controller = MagicMock(spec=RAGController)
+    controller.search_text.return_value = [("Test content", 0.1)]
     return controller
+
+
+@pytest.fixture
+def qa_controller():
+    return QAController()
 
 
 @pytest.fixture
@@ -81,35 +84,31 @@ def mock_technical_summary():
 
 
 @pytest.mark.asyncio
-async def test_get_standard_summary(mock_standard_summary, qa_controller, mocker: MockerFixture):
-    # Setup mock
-    mock_get_response = mocker.patch(
-        "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
-    )
-    mock_get_response.return_value = mock_standard_summary
+async def test_get_standard_summary(qa_controller, mock_rag_controller):
+    test_file_id = "test_file_123"
 
-    # Test
-    result = await qa_controller.get_summary(Path("test.pdf"), StandardSummary)
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    # Assertions
-    assert isinstance(result, StandardSummary)
-    assert result == mock_standard_summary
+        result = await qa_controller.get_summary(test_file_id, StandardSummary)
+        assert result is not None
+        assert isinstance(result, StandardSummary)
+        mock_rag.assert_called_once_with(test_file_id)
+        mock_rag_controller.search_text.assert_called_once_with("summary", k=5)
 
 
 @pytest.mark.asyncio
-async def test_get_technical_summary(mock_technical_summary, qa_controller, mocker: MockerFixture):
-    # Setup mock
-    mock_get_response = mocker.patch(
-        "src.qa_gpt.core.controller.qa_controller.get_chat_gpt_response_structure_async"
-    )
-    mock_get_response.return_value = mock_technical_summary
+async def test_get_technical_summary(qa_controller, mock_rag_controller):
+    test_file_id = "test_file_123"
 
-    # Test
-    result = await qa_controller.get_summary(Path("test.pdf"), TechnicalSummary)
+    with patch("src.qa_gpt.core.controller.qa_controller.RAGController.from_file_id") as mock_rag:
+        mock_rag.return_value = mock_rag_controller
 
-    # Assertions
-    assert isinstance(result, TechnicalSummary)
-    assert result == mock_technical_summary
+        result = await qa_controller.get_summary(test_file_id, TechnicalSummary)
+        assert result is not None
+        assert isinstance(result, TechnicalSummary)
+        mock_rag.assert_called_once_with(test_file_id)
+        mock_rag_controller.search_text.assert_called_once_with("summary", k=5)
 
 
 def test_summary_serialization(mock_standard_summary, mock_technical_summary):
