@@ -194,7 +194,8 @@ Remember: Your goal is to help learners understand the topic by providing the mo
     ) -> T:
         rag_controller = RAGController.from_file_id(file_id)
         # Get relevant content using search_text
-        relevant_content = rag_controller.search_text("summary", k=5)
+        summary_keywords_str = ", ".join(summary_class.get_rag_key_words())
+        relevant_content = rag_controller.search_text(summary_keywords_str, k=5)
         material_text = "\n".join([text for text, _ in relevant_content])
 
         user_input = self.user_input_temp.copy()

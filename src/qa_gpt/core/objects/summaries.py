@@ -137,6 +137,11 @@ class BaseSummary(BaseModel):
         """
 
     @classmethod
+    def get_rag_key_words(cls) -> list[str]:
+        """Returns a list of key words important for RAG purposes."""
+        return ["base_summary"]
+
+    @classmethod
     def model_json_schema(cls):
         schema = super().model_json_schema()
         schema["required"] = list(schema["properties"].keys())
@@ -206,6 +211,26 @@ class StandardSummary(BaseSummary):
     motivation: Motivation
     conclusion: Conclusion
     bullet_points: list[BulletPoint]
+
+    @classmethod
+    def get_rag_key_words(cls) -> list[str]:
+        """Returns a list of key words important for RAG purposes."""
+        base_keywords = super().get_rag_key_words()
+        additional_keywords = [
+            "conclusion",
+            "findings",
+            "results",
+            "contribution",
+            "solved",
+            "outcome",
+            "achievement",
+            "impact",
+            "significance",
+            "future_work",
+            "limitations",
+            "recommendations",
+        ]
+        return base_keywords + additional_keywords
 
     def __str__(self):
         split_line = "=" * 20 + "\n"
@@ -284,6 +309,28 @@ class TechnicalSummary(BaseModel):
     implementation_steps: list[str]
     requirements: list[str]
     limitations: list[str]
+
+    @classmethod
+    def get_rag_key_words(cls) -> list[str]:
+        """Returns a list of key words important for RAG purposes."""
+        return [
+            "technical",
+            "implementation",
+            "architecture",
+            "requirements",
+            "specifications",
+            "algorithms",
+            "data_structures",
+            "performance",
+            "optimization",
+            "maintenance",
+            "deployment",
+            "configuration",
+            "dependencies",
+            "limitations",
+            "constraints",
+            "metrics",
+        ]
 
     def __str__(self):
         split_line = "=" * 20 + "\n"
@@ -420,6 +467,36 @@ class InnovationSummary(BaseModel):
     innovation_points: list[InnovationPoint]
     references: list[str]
 
+    @classmethod
+    def get_rag_key_words(cls) -> list[str]:
+        """Returns a list of key words important for RAG purposes."""
+        return [
+            "innovation",
+            "novel",
+            "breakthrough",
+            "invention",
+            "discovery",
+            "advancement",
+            "improvement",
+            "enhancement",
+            "originality",
+            "creativity",
+            "uniqueness",
+            "research",
+            "development",
+            "prototype",
+            "comparison",
+            "performance",
+            "efficiency",
+            "effectiveness",
+            "impact",
+            "applications",
+            "potential",
+            "future_work",
+            "challenges",
+            "opportunities",
+        ]
+
     def __str__(self):
         split_line = "=" * 20 + "\n"
         return f"""
@@ -533,6 +610,11 @@ class MetaDataSummary(BaseModel):
     authors: str
     journal_name: str
     publication_date: str
+
+    @classmethod
+    def get_rag_key_words(cls) -> list[str]:
+        """Returns a list of key words important for RAG purposes."""
+        return ["metadata", "title", "authors", "publication", "journal", "conference"]
 
     def __str__(self):
         split_line = "=" * 20 + "\n"
