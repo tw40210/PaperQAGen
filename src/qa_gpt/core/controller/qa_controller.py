@@ -8,10 +8,7 @@ from pydantic import BaseModel
 
 from src.qa_gpt.chat.chat import get_chat_gpt_response_structure_async
 from src.qa_gpt.core.controller.rag_controller import RAGController
-from src.qa_gpt.core.objects.questions import (
-    MaterialClipsForTopic,
-    MultipleChoiceQuestionSet,
-)
+from src.qa_gpt.core.objects.questions import MultipleChoiceQuestionSet
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -148,46 +145,6 @@ Choice:
     explanation: The reason why it is true or not, according to the corresponding question_description. Please provide as detail as possible to prove the answer, referencing specific information from the material clips.
             """,
         }
-        self.material_clips_for_topic_temp = {
-            "role": "system",
-            "content": """
-I want you to act as a professional content curator and educational specialist. Your task is to select the most relevant and informative clips from the provided material that best represent a specific topic. Follow these guidelines:
-
-1. Clip Selection Criteria:
-   - Select 3-5 most relevant clips that directly address the given topic
-   - Each clip should be a complete, self-contained excerpt from the material
-   - Clips should be verbatim from the material without any modifications
-   - Clips should be of appropriate length (typically 1-3 sentences)
-   - Ensure the clips collectively provide comprehensive coverage of the topic
-
-2. For each selected clip:
-   - Provide the exact text from the material
-   - Explain why this clip was chosen, focusing on:
-     * How it directly relates to the topic
-     * What key information or insight it provides
-     * Why it's essential for understanding the topic
-
-3. Format your response as follows:
-   Clip 1:
-   - Text: [exact quote from material]
-   - Reason: [detailed explanation of why this clip was chosen]
-
-   Clip 2:
-   - Text: [exact quote from material]
-   - Reason: [detailed explanation of why this clip was chosen]
-
-   [Continue for all selected clips]
-
-4. Additional Guidelines:
-   - Maintain the original context of each clip
-   - Ensure the clips are exactly from the material without any modifications
-   - Avoid selecting redundant or overlapping clips
-   - Prioritize clips that contain unique or critical information
-   - Consider the educational value and clarity of each clip
-
-Remember: Your goal is to help learners understand the topic by providing the most relevant and informative excerpts from the material, along with clear explanations of their significance.
-            """,
-        }
 
     async def get_summary(
         self, file_id: str, summary_class: type[T], additional_context: str = ""
@@ -206,22 +163,6 @@ Remember: Your goal is to help learners understand the topic by providing the mo
 
         messages = [sys_summary_message, user_input]
         result = await get_chat_gpt_response_structure_async(messages, res_obj=summary_class)
-        return result
-
-    async def get_material_clips_for_topic(self, file_id: str, topic: str) -> MaterialClipsForTopic:
-        rag_controller = RAGController.from_file_id(file_id)
-        # Get relevant content using search_text
-        relevant_content = rag_controller.search_text(topic, k=5)
-        material_text = "\n".join([text for text, _ in relevant_content])
-
-        user_input = self.user_input_temp.copy()
-        user_input.update({"content": f"Material: {material_text}\n\nTopic: {topic}"})
-        sys_material_clips_for_topic_message = self.material_clips_for_topic_temp.copy()
-
-        messages = [sys_material_clips_for_topic_message, user_input]
-        result = await get_chat_gpt_response_structure_async(
-            messages, res_obj=MaterialClipsForTopic
-        )
         return result
 
     async def get_questions(
