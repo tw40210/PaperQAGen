@@ -12,6 +12,7 @@
 1. Use rag to get relative indexes for summaries and question generation.
 2. Include corresponding tables with the selected indexes
 3. Daily upload limit
+4. Leave comments on questions
 
 
 # Future roadmap
