@@ -184,7 +184,9 @@ Choice:
 
         # Create a new RAGController instance for the main question generation
         rag_controller = RAGController.from_file_id(file_id)
-        relevant_content = rag_controller.search_text(field_name, k=5)
+        relevant_content = rag_controller.search_text(
+            field_name, k=2
+        )  # Use smaller number to focus on a precise field
         material_text = "\n".join([text for text, _ in relevant_content])
 
         user_input = self.user_input_temp.copy()
