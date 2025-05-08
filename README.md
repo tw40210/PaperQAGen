@@ -34,19 +34,25 @@ Faiss
 conda install -c conda-forge faiss-gpu
 ```
 
-模型下载
-
+Model Download
+```
 python download_models.py
-python脚本会自动下载模型文件并配置好配置文件中的模型目录，配置文件可以在用户目录中找到，文件名为magic-pdf.json
+```
 
-windows的【用户目录】为 "C:\Users\用户名", linux【用户目录】为 "/home/用户名"
+The Python script will automatically download the model files and set up the model directory in the configuration file. The configuration file can be found in the user directory, and its filename is magic-pdf.json.
 
-修改【用户目录】配置文件magic-pdf.json中"device-mode"的值来启用CUDA
+On Windows, the user directory is "C:\Users\YourUsername"
 
+On Linux, the user directory is "/home/YourUsername"
+
+To enable CUDA, modify the "device-mode" value in the magic-pdf.json configuration file located in the user directory:
+
+json
+```
 {
-    "device-mode":"cuda"
+    "device-mode": "cuda"
 }
-
+```
 
 
 
