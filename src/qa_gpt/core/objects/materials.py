@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.qa_gpt.core.objects.questions import MultipleChoiceQuestionSet
+from src.qa_gpt.core.objects.questions import MultipleChoiceQuestionSet, QuestionComment
 from src.qa_gpt.core.objects.summaries import StandardSummary, TechnicalSummary
 
 
@@ -32,6 +32,7 @@ class FileMeta(BasicDataBaseObject):
     file_suffix: str
     file_path: Path
     mc_question_sets: dict[str, MultipleChoiceQuestionSet]
+    question_comments: dict[str, QuestionComment]
     summaries: dict[str, StandardSummary | TechnicalSummary]
     parsing_results: dict[str, any]
     rag_state: Path | None = None  # Path to the RAG state file

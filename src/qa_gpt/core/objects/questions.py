@@ -53,3 +53,20 @@ class MaterialClipsForTopic(BaseModel):
         clips:{self.clips}
         reason_of_selecting_clips:{self.reason_of_selecting_clips}
         """
+
+
+class QuestionComment(BaseModel):
+    topic: str
+    content: str
+    is_positive: bool
+    question_set_id: str
+    question_id: str
+
+    def __str__(self):
+        return f"""
+        topic:{self.topic}
+        content:{self.content}
+        is_positive:{self.is_positive}
+        question_set_id:{self.question_set_id}
+        question_id:{self.question_id}
+        """

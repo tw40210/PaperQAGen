@@ -13,6 +13,7 @@ from src.qa_gpt.core.objects.questions import (
     Choice,
     MultipleChoiceQuestion,
     MultipleChoiceQuestionSet,
+    QuestionComment,
 )
 from src.qa_gpt.core.objects.summaries import (
     BulletPoint,
@@ -125,6 +126,17 @@ def sample_technical_summary():
     )
 
 
+@pytest.fixture
+def sample_question_comment():
+    return QuestionComment(
+        topic="difficulty",
+        content="This question is too complex",
+        is_positive=False,
+        question_set_id="set_1",
+        question_id="question_2",
+    )
+
+
 def test_material_controller_initialization(test_material_controller):
     assert test_material_controller.db_table_name == "material_table"
     assert test_material_controller.db_mapping_table_name == "material_id_mapping_table"
@@ -155,6 +167,7 @@ def test_append_mc_question_set(test_material_controller, sample_question_set):
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -206,6 +219,7 @@ def test_append_summary(test_material_controller, sample_summary):
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -246,6 +260,7 @@ def test_append_technical_summary(test_material_controller, sample_technical_sum
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -290,6 +305,7 @@ def test_append_multiple_summaries(
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -327,6 +343,7 @@ def test_get_material_table(test_material_controller):
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -351,6 +368,7 @@ def test_get_material_mapping_table(test_material_controller):
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -383,6 +401,7 @@ def test_mapping_table_string_ids(test_material_controller):
             file_suffix=".pdf",
             file_path=Path(f"test_file_{i}.pdf"),
             mc_question_sets={},
+            question_comments={},
             summaries={},
             parsing_results={"sections": None, "images": None, "tables": None},
         )
@@ -416,6 +435,7 @@ def test_output_material_as_folder(test_material_controller, sample_question_set
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={"0": sample_question_set},
+        question_comments={},
         summaries={"StandardSummary": sample_summary},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -465,6 +485,7 @@ def test_output_material_with_technical_summary(test_material_controller, sample
         file_suffix=".pdf",
         file_path=Path("test_file.pdf"),
         mc_question_sets={},
+        question_comments={},
         summaries={"TechnicalSummary": sample_technical_summary},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -518,6 +539,7 @@ def test_remove_material_by_filename(test_material_controller):
         file_suffix=".pdf",
         file_path=test_material_controller.archive_path / f"{file_name}_0.pdf",
         mc_question_sets={},
+        question_comments={},
         summaries={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -580,6 +602,7 @@ def test_remove_material_by_filename_with_associated_data(
         file_suffix=".pdf",
         file_path=test_material_controller.archive_path / f"{file_name}_0.pdf",
         mc_question_sets={"0": sample_question_set},
+        question_comments={},
         summaries={"StandardSummary": sample_summary},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -628,6 +651,7 @@ def test_remove_material_with_technical_summary(test_material_controller, sample
         file_suffix=".pdf",
         file_path=test_material_controller.archive_path / f"{file_name}_0.pdf",
         mc_question_sets={},
+        question_comments={},
         summaries={"TechnicalSummary": sample_technical_summary},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
@@ -665,3 +689,142 @@ def test_remove_material_with_technical_summary(test_material_controller, sample
     # Verify mapping table entry is deleted
     mapping_table = test_material_controller.get_material_mapping_table()
     assert file_name not in mapping_table
+
+
+def test_append_question_comment(
+    test_material_controller, sample_question_set, sample_question_comment
+):
+    # First create a file meta with a question set
+    file_meta = FileMeta(
+        id=0,
+        file_name="test_file",
+        file_suffix=".pdf",
+        file_path=Path("test_file.pdf"),
+        mc_question_sets={"set_1": sample_question_set},
+        question_comments={},
+        summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
+    )
+    test_material_controller.db_controller.save_data(
+        file_meta,
+        test_material_controller.db_controller.get_target_path(
+            [test_material_controller.db_table_name, "0"]
+        ),
+    )
+
+    # Test appending comment
+    result = test_material_controller.append_question_comment(0, sample_question_comment)
+    assert result == 0
+
+    # Verify the comment was saved with correct key
+    updated_meta = test_material_controller.db_controller.get_data(
+        test_material_controller.db_controller.get_target_path(
+            [test_material_controller.db_table_name, "0"]
+        )
+    )
+    assert "set_1_question_2_0" in updated_meta["question_comments"]
+    assert updated_meta["question_comments"]["set_1_question_2_0"] == sample_question_comment
+
+
+def test_append_multiple_question_comments(
+    test_material_controller, sample_question_set, sample_question_comment
+):
+    # First create a file meta with a question set
+    file_meta = FileMeta(
+        id=0,
+        file_name="test_file",
+        file_suffix=".pdf",
+        file_path=Path("test_file.pdf"),
+        mc_question_sets={"set_1": sample_question_set},
+        question_comments={},
+        summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
+    )
+    test_material_controller.db_controller.save_data(
+        file_meta,
+        test_material_controller.db_controller.get_target_path(
+            [test_material_controller.db_table_name, "0"]
+        ),
+    )
+
+    # Add multiple comments for the same question
+    for i in range(3):
+        comment = QuestionComment(
+            topic=f"comment_{i}",
+            content=f"Content {i}",
+            is_positive=True,
+            question_set_id="set_1",
+            question_id="question_2",
+        )
+        result = test_material_controller.append_question_comment(0, comment)
+        assert result == 0
+
+    # Verify all comments were saved with correct keys
+    updated_meta = test_material_controller.db_controller.get_data(
+        test_material_controller.db_controller.get_target_path(
+            [test_material_controller.db_table_name, "0"]
+        )
+    )
+    assert "set_1_question_2_0" in updated_meta["question_comments"]
+    assert "set_1_question_2_1" in updated_meta["question_comments"]
+    assert "set_1_question_2_2" in updated_meta["question_comments"]
+
+
+def test_append_question_comment_invalid_question_set(
+    test_material_controller, sample_question_comment
+):
+    # Create file meta without the question set
+    file_meta = FileMeta(
+        id=0,
+        file_name="test_file",
+        file_suffix=".pdf",
+        file_path=Path("test_file.pdf"),
+        mc_question_sets={},
+        question_comments={},
+        summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
+    )
+    test_material_controller.db_controller.save_data(
+        file_meta,
+        test_material_controller.db_controller.get_target_path(
+            [test_material_controller.db_table_name, "0"]
+        ),
+    )
+
+    # Test appending comment to non-existent question set
+    with pytest.raises(ValueError, match="Question set 'set_1' not found"):
+        test_material_controller.append_question_comment(0, sample_question_comment)
+
+
+def test_append_question_comment_invalid_question_id(test_material_controller, sample_question_set):
+    # Create file meta with question set
+    file_meta = FileMeta(
+        id=0,
+        file_name="test_file",
+        file_suffix=".pdf",
+        file_path=Path("test_file.pdf"),
+        mc_question_sets={"set_1": sample_question_set},
+        question_comments={},
+        summaries={},
+        parsing_results={"sections": None, "images": None, "tables": None},
+    )
+    test_material_controller.db_controller.save_data(
+        file_meta,
+        test_material_controller.db_controller.get_target_path(
+            [test_material_controller.db_table_name, "0"]
+        ),
+    )
+
+    # Test appending comment with invalid question ID
+    invalid_comment = QuestionComment(
+        topic="test",
+        content="test content",
+        is_positive=True,
+        question_set_id="set_1",
+        question_id="question_6",  # Invalid question ID
+    )
+    with pytest.raises(
+        ValueError,
+        match="Invalid question ID 'question_6'. Must be 'question_1' through 'question_5'",
+    ):
+        test_material_controller.append_question_comment(0, invalid_comment)

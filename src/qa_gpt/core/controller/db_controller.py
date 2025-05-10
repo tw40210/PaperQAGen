@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.qa_gpt.core.constant import LOCAL_DB_FOLDER, MATERIAL_FOLDER
 from src.qa_gpt.core.objects.materials import FileMeta
-from src.qa_gpt.core.objects.questions import MultipleChoiceQuestionSet
+from src.qa_gpt.core.objects.questions import MultipleChoiceQuestionSet, QuestionComment
 from src.qa_gpt.core.objects.summaries import StandardSummary, TechnicalSummary
 
 logger = logging.getLogger(__name__)
@@ -163,6 +163,7 @@ class MaterialController:
                 file_path=self.archive_path
                 / Path(f"{file_path.stem}_{archive_file_id}{file_path.suffix}"),
                 mc_question_sets={},
+                question_comments={},
                 summaries={},
                 parsing_results={"sections": None, "images": None, "tables": None},
             )
@@ -214,6 +215,53 @@ class MaterialController:
 
         self.db_controller.save_data(file_meta, target_path)
 
+        return 0
+
+    def append_question_comment(self, file_id: int, comment: QuestionComment) -> int:
+        """Add a QuestionComment to the material's metadata and persist to database.
+
+        Args:
+            file_id (int): The ID of the material file
+            comment (QuestionComment): The comment to add
+
+        Returns:
+            int: 0 if successful, -1 if material not found
+
+        Raises:
+            ValueError: If the question set/question doesn't exist
+        """
+        file_meta, target_path = self._get_material_filemeta(file_id)
+
+        # Verify that the question set and question exist
+        if comment.question_set_id not in file_meta["mc_question_sets"]:
+            raise ValueError(f"Question set '{comment.question_set_id}' not found")
+
+        if comment.question_id not in [f"question_{i}" for i in range(1, 6)]:
+            raise ValueError(
+                f"Invalid question ID '{comment.question_id}'. Must be 'question_1' through 'question_5'"
+            )
+
+        # Get existing comments for this question to determine the next index
+        question_comments = {
+            k: v
+            for k, v in file_meta["question_comments"].items()
+            if k.startswith(f"{comment.question_set_id}_{comment.question_id}_")
+        }
+
+        # Find the next available index
+        next_index = 0
+        while f"{comment.question_set_id}_{comment.question_id}_{next_index}" in question_comments:
+            next_index += 1
+
+        # Create a unique key using question set ID, question ID, and index
+        comment_key = f"{comment.question_set_id}_{comment.question_id}_{next_index}"
+
+        file_meta["question_comments"][comment_key] = comment
+        self.db_controller.save_data(file_meta, target_path)
+
+        logger.info(
+            f"Successfully added comment (index: {next_index}) for topic '{comment.topic}' to question {comment.question_id} in set {comment.question_set_id}"
+        )
         return 0
 
     def get_material_table(self) -> dict[str, FileMeta]:
