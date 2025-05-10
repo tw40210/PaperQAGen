@@ -51,7 +51,9 @@ def remove_material(
 
 
 def display_material_operations(
-    material_folder_path: str | None, material_controller: MaterialController | None = None
+    material_folder_path: str | None,
+    question_set_id: str | None,
+    material_controller: MaterialController | None = None,
 ) -> None:
     """Display material operations UI.
 
@@ -65,11 +67,59 @@ def display_material_operations(
         st.write("No material selected.")
         return
 
-    operation = st.selectbox("Select an operation", ["Remove selected material"])
+    operation = st.selectbox(
+        "Select an operation", ["Remove selected material", "Comment on a question"]
+    )
 
-    if st.button("Run Operation"):
-        if operation == "Remove selected material":
+    if operation == "Remove selected material":
+        if st.button("Run Operation"):
             remove_material(material_folder_path, material_controller)
+    elif operation == "Comment on a question":
+        # Get the file name from the folder path
+        folder_name = Path(material_folder_path).name
+        file_name = folder_name.rsplit("_", 1)[0]  # Remove the ID suffix
+
+        # Initialize material controller if not provided
+        if material_controller is None:
+            material_controller = initialize_controllers()
+
+        # Get the file meta for the selected material
+        file_meta = material_controller.get_material_by_filename(file_name)
+
+        if file_meta:
+            st.subheader("Add Question Comment")
+
+            # Create a form for comment submission
+            with st.form("comment_form", clear_on_submit=True):
+                # Input fields for comment
+                topic = st.text_input("Topic")
+                content = st.text_area("Comment Content")
+                is_positive = st.checkbox("Is this a positive comment?")
+
+                # Question selection
+                question_id = st.selectbox(
+                    "Question ID",
+                    ["question_1", "question_2", "question_3", "question_4", "question_5"],
+                )
+
+                # Submit button
+                submitted = st.form_submit_button("Submit Comment")
+
+                if submitted:
+                    if topic and content and question_set_id:
+                        add_question_comment(
+                            file_meta,
+                            topic,
+                            content,
+                            is_positive,
+                            question_set_id,
+                            question_id,
+                            material_controller,
+                        )
+                    else:
+                        st.error("Please fill in all required fields")
+        else:
+            st.error("Could not find material information")
 
 
 def add_question_comment(

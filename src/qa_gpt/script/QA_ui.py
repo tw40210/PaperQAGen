@@ -11,6 +11,7 @@ from src.qa_gpt.core.ui.question_display import (
     load_questions,
 )
 from src.qa_gpt.core.ui.summary_display import display_summary
+from src.qa_gpt.core.utils.parsing_utils import extract_question_set_id
 
 # Set wide mode
 st.set_page_config(layout="wide")
@@ -27,7 +28,8 @@ with col1:
     material_folder_path, selected_file = display_material_selection(FOLDER_PATH)
 
     # Display material operations
-    display_material_operations(material_folder_path)
+    if selected_file is not None:
+        display_material_operations(material_folder_path, extract_question_set_id(selected_file))
 
     # Display questions if a file is selected
     if selected_file:

@@ -270,6 +270,28 @@ class MaterialController:
     def get_material_mapping_table(self) -> dict:
         return self.db_controller.get_data(self.db_mapping_table_name)
 
+    def get_material_by_filename(self, file_name: str) -> FileMeta | None:
+        """Get material metadata by file name.
+
+        Args:
+            file_name: The name of the file to get (without extension)
+
+        Returns:
+            FileMeta | None: The material metadata if found, None otherwise
+        """
+        # Get the material ID from mapping table
+        mapping_table = self.get_material_mapping_table()
+        if file_name not in mapping_table:
+            logger.warning(f"Material with file name '{file_name}' not found")
+            return None
+
+        file_id = mapping_table[file_name]
+
+        # Get the material metadata from material table
+        file_meta, _ = self._get_material_filemeta(file_id)
+
+        return file_meta
+
     def remove_material_by_filename(self, file_name: str) -> int:
         """Remove a material and its associated data by file name.
 
