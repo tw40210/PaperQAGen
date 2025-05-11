@@ -29,13 +29,19 @@ with col1:
 
     # Display material operations
     if selected_file is not None:
-        display_material_operations(material_folder_path, extract_question_set_id(selected_file))
+        display_material_operations(
+            material_folder_path, question_set_id=extract_question_set_id(selected_file)
+        )
 
     # Display questions if a file is selected
     if selected_file:
         file_path = f"{material_folder_path}/{selected_file}"
         questions = load_questions(file_path)
-        user_selections = display_questions(questions)
+        user_selections = display_questions(
+            questions,
+            material_folder_path=material_folder_path,
+            question_set_id=extract_question_set_id(selected_file),
+        )
         display_question_results(user_selections)
 
 with col2:

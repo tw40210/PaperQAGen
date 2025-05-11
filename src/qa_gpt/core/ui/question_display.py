@@ -1,9 +1,12 @@
 import json
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
 
+from src.qa_gpt.core.controller.db_controller import MaterialController
 from src.qa_gpt.core.utils.display_utils import display_question, get_parsed_question
+from src.qa_gpt.core.utils.fetch_utils import initialize_controllers
 
 
 def load_questions(file_path: str) -> dict[str, Any]:
@@ -13,12 +16,18 @@ def load_questions(file_path: str) -> dict[str, Any]:
 
 
 def display_questions(
-    questions: dict[str, Any]
+    questions: dict[str, Any],
+    material_folder_path: str | None = None,
+    question_set_id: str | None = None,
+    material_controller: MaterialController | None = None,
 ) -> list[tuple[str, list[int], list[int], list[str]]]:
     """Display questions and collect user selections.
 
     Args:
         questions: Dictionary containing question data
+        material_folder_path: Optional path to the material folder
+        question_set_id: Optional ID of the question set
+        material_controller: Optional MaterialController instance
 
     Returns:
         List of tuples containing:
@@ -30,12 +39,32 @@ def display_questions(
     st.header("Question set")
     st.write("---")
 
+    # Initialize material controller and get file meta if material folder path is provided
+    file_meta = None
+    if material_folder_path:
+        # Initialize material controller if not provided
+        if material_controller is None:
+            material_controller = initialize_controllers()
+
+        # Get the file name from the folder path
+        folder_name = Path(material_folder_path).name
+        file_name = folder_name.rsplit("_", 1)[0]  # Remove the ID suffix
+
+        # Get the file meta for the selected material
+        file_meta = material_controller.get_material_by_filename(file_name)
+
     user_selections = []
 
     for question_key, question_set in questions.items():
         parsed_question = get_parsed_question(question_set)
+
         selected_options = display_question(
-            parsed_question["question_description"], parsed_question["options"], question_key
+            parsed_question["question_description"],
+            parsed_question["options"],
+            question_key,
+            question_set_id,
+            material_controller,
+            file_meta,
         )
         user_selections.append(
             (

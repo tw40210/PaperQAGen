@@ -157,12 +157,46 @@ def get_parsed_question(question_object) -> dict:
     return parsed_question
 
 
-def display_question(question, options, question_key):
+def display_question(
+    question, options, question_key, question_set_id, material_controller=None, file_meta=None
+):
+    st.subheader(f"{question_key[0].upper()}{question_key[1:]}")
     st.write(question)
     selected_options = []
+
+    # Add a button to show comments if material_controller and file_meta are provided
+    if material_controller and file_meta:
+        question_key_with_set_id = f"{question_set_id}_{question_key}"
+        if st.button("View Comments", key=f"view_comments_{question_key_with_set_id}"):
+            display_question_comments(material_controller, file_meta, question_key_with_set_id)
 
     for idx, option in enumerate(options):
         if st.checkbox(option, key=f"{question_key}_{option}"):
             selected_options.append(idx)
 
     return selected_options
+
+
+def display_question_comments(material_controller, file_meta, question_key_with_set_id):
+    """Display comments for a specific question in a dialog."""
+    # Get comments for this question
+    question_comments = {
+        k: v
+        for k, v in file_meta["question_comments"].items()
+        if k.startswith(f"{question_key_with_set_id}_")
+    }
+
+    if not question_comments:
+        st.info("No comments available for this question.")
+        return
+
+    display_question_comments_dialog(question_comments, question_key_with_set_id)
+
+
+@st.dialog("Question Comments")
+def display_question_comments_dialog(question_comments, question_key_with_set_id):
+    st.subheader(f"Comments for {question_key_with_set_id}")
+    for _, comment in question_comments.items():
+        with st.expander(f"Comment: {comment.topic}", expanded=True):
+            st.write(f"**Content:** {comment.content}")
+            st.write(f"**Type:** {'Positive' if comment.is_positive else 'Negative'}")
