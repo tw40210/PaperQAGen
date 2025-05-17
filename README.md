@@ -8,7 +8,7 @@ conda activate PaperQAGen
 ```
 
 ```
-pip install -r requirements/requirments.txt
+pip install -r requirements/requirements.txt
 ```
 
 ```
@@ -57,7 +57,7 @@ json
 
 
 # Launch
-1. streamlit run ./src/qa_gpt/script/QA_ui.py
+1. streamlit run ./src/qa_gpt/script/QA_ui.py  (default port 8501)
 
 # TODO
 1. Use rag to get relative indexes for summaries and question generation.
