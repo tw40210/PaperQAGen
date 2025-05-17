@@ -29,7 +29,6 @@ dill==0.4.0
 distlib==0.3.9
 distro==1.9.0
 doclayout_yolo==0.0.2b1
-
 fake-useragent==2.0.3
 fast-langdetect==0.2.5
 fasttext-predict==0.9.2.4
@@ -78,13 +77,11 @@ narwhals==1.20.1
 networkx==3.4.2
 nodeenv==1.9.1
 numpy==1.26.1
-
 omegaconf==2.3.0
 onnxruntime==1.21.1
 openai==1.76.0
 opencv-python==4.11.0.86
 opencv-python-headless==4.11.0.86
-packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1745345660/work
 pandas==2.2.3
 parse==1.20.2
 pathspec==0.12.1
@@ -112,7 +109,6 @@ PyMuPDF==1.24.14
 pyparsing==3.2.3
 pyppeteer==2.0.0
 pyquery==2.0.1
-
 python-dateutil==2.9.0.post0
 pytz==2024.2
 pyupgrade==3.17.0
