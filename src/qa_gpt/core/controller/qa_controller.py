@@ -1,9 +1,7 @@
 import asyncio
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any, TypeVar
 
-import PyPDF2
 from pydantic import BaseModel
 
 from src.qa_gpt.chat.chat import get_chat_gpt_response_structure_async
@@ -234,22 +232,3 @@ Choice:
 class PreprocessController:
     def __init__(self) -> None:
         pass
-
-    def preprocess(self, file_path: Path):
-        output = self._pdf_to_text(file_path)
-        return output
-
-    def _pdf_to_text(self, pdf_path: Path):
-        # Open the PDF file in read-binary mode
-        with open(str(pdf_path), "rb") as pdf_file:
-            # Create a PdfReader object instead of PdfFileReader
-            pdf_reader = PyPDF2.PdfReader(pdf_file)
-
-            # Initialize an empty string to store the text
-            text = ""
-
-            for page_num in range(len(pdf_reader.pages)):
-                page = pdf_reader.pages[page_num]
-                text += page.extract_text()
-
-        return text
