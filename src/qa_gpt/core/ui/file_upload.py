@@ -15,7 +15,7 @@ def load_json_from_file(file_path):
 
 async def handle_file_upload():
     """Handle file upload with validation and process using fetch functions."""
-    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"], disabled=False)
 
     if uploaded_file is not None:
         # Check if file is PDF
