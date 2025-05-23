@@ -4,7 +4,7 @@ import openai
 from pydantic import BaseModel
 
 from src.qa_gpt.chat.private_keys import openapi_key
-from src.qa_gpt.core.utils.rate_limit_decorator import handle_openai_errors
+from src.qa_gpt.chat.rate_limit_decorator import handle_openai_errors
 
 os.environ["OPENAI_API_KEY"] = openapi_key
 sync_client = openai.OpenAI()

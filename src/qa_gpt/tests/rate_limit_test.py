@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from src.qa_gpt.core.utils.rate_limit_decorator import handle_openai_errors
+from src.qa_gpt.chat.rate_limit_decorator import handle_openai_errors
 
 
 class CustomError(Exception):
