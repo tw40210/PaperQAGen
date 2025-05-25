@@ -1,5 +1,16 @@
 # PaperQAGen
 
+# Usage
+
+1. Upload a paper pdf file and the system will automatically process it.
+2. Select a specific summary and get flash ideas.
+3. Select a question set according to your interest to testify your understanding.
+4. Operations to execute like leaving comments or deleting a paper material.
+
+![image](https://github.com/user-attachments/assets/764b40f2-5fc1-4845-83f8-1e6c62719a84)
+![image](https://github.com/user-attachments/assets/01d3724c-e414-4da0-9d9c-a3884747be42)
+
+
 # Installation
 
 ```
