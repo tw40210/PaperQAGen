@@ -94,7 +94,10 @@ async def test_get_standard_summary(qa_controller, mock_rag_controller):
         assert result is not None
         assert isinstance(result, StandardSummary)
         mock_rag.assert_called_once_with(test_file_id)
-        mock_rag_controller.search_text.assert_called_once_with("summary", k=5)
+        mock_rag_controller.search_text.assert_called_once_with(
+            "base_summary, conclusion, findings, results, contribution, solved, outcome, achievement, impact, significance, future_work, limitations, recommendations",
+            k=5,
+        )
 
 
 @pytest.mark.asyncio
@@ -108,7 +111,10 @@ async def test_get_technical_summary(qa_controller, mock_rag_controller):
         assert result is not None
         assert isinstance(result, TechnicalSummary)
         mock_rag.assert_called_once_with(test_file_id)
-        mock_rag_controller.search_text.assert_called_once_with("summary", k=5)
+        mock_rag_controller.search_text.assert_called_once_with(
+            "technical, implementation, architecture, requirements, specifications, algorithms, data_structures, performance, optimization, maintenance, deployment, configuration, dependencies, limitations, constraints, metrics",
+            k=5,
+        )
 
 
 def test_summary_serialization(mock_standard_summary, mock_technical_summary):

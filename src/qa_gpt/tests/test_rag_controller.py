@@ -29,15 +29,32 @@ def rag_controller(temp_rag_folder, test_file_id):
     return controller
 
 
-def test_initialization(rag_controller):
+def test_initialization(temp_rag_folder, test_file_id):
     """Test RAG controller initialization."""
-    assert rag_controller.dimension == 384  # all-MiniLM-L6-v2 has 384 dimensions
-    assert rag_controller.index is not None
-    assert rag_controller.index.ntotal == 0
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    loaded_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+    assert loaded_controller.dimension == 384  # all-MiniLM-L6-v2 has 384 dimensions
+    assert loaded_controller.index is not None
+    assert loaded_controller.index.ntotal == 0
 
 
-def test_add_vectors(rag_controller):
+def test_add_vectors(temp_rag_folder, test_file_id):
     """Test adding vectors to the index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     # Create some test vectors with correct dimension
     vectors = np.random.rand(3, 384).astype(np.float32)  # all-MiniLM-L6-v2 has 384 dimensions
 
@@ -48,8 +65,17 @@ def test_add_vectors(rag_controller):
     assert rag_controller.index.ntotal == 3
 
 
-def test_search(rag_controller):
+def test_search(temp_rag_folder, test_file_id):
     """Test searching for similar vectors."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     # Add some test vectors with correct dimension
     vectors = np.random.rand(3, 384).astype(np.float32)  # all-MiniLM-L6-v2 has 384 dimensions
     rag_controller.add_vectors(vectors)
@@ -63,8 +89,17 @@ def test_search(rag_controller):
     assert results[0][1] < results[1][1]  # First result should have smaller distance
 
 
-def test_get_vector_by_index(rag_controller):
+def test_get_vector_by_index(temp_rag_folder, test_file_id):
     """Test retrieving vectors by index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     # Add a test vector with correct dimension
     vector = np.random.rand(384).astype(np.float32)  # all-MiniLM-L6-v2 has 384 dimensions
     rag_controller.add_vectors(vector.reshape(1, -1))
@@ -76,14 +111,32 @@ def test_get_vector_by_index(rag_controller):
     np.testing.assert_array_almost_equal(vector, retrieved_vector)
 
 
-def test_invalid_index(rag_controller):
+def test_invalid_index(temp_rag_folder, test_file_id):
     """Test handling of invalid index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     with pytest.raises(IndexError):
         rag_controller.get_vector_by_index(0)  # No vectors added yet
 
 
-def test_empty_search(rag_controller):
+def test_empty_search(temp_rag_folder, test_file_id):
     """Test searching with empty index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     query_vector = np.random.rand(384).astype(np.float32)  # all-MiniLM-L6-v2 has 384 dimensions
     results = rag_controller.search(query_vector, k=5)
     assert len(results) == 0
@@ -92,43 +145,46 @@ def test_empty_search(rag_controller):
 def test_persistence(temp_rag_folder, test_file_id):
     """Test saving and loading the index and text store."""
     # Create first controller and add vectors and texts
-    controller1 = RAGController.from_file_id(
-        test_file_id, rag_state_folder_path=str(temp_rag_folder)
-    )
-    vectors = np.random.rand(2, 384).astype(np.float32)  # all-MiniLM-L6-v2 has 384 dimensions
-    texts = ["Test text 1", "Test text 2"]
-    controller1.add_vectors(vectors)
-    controller1.add_texts(texts)
+    controller1 = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+
+    # Add some test data
+    test_vectors = np.random.rand(5, 384).astype(np.float32)
+    test_texts = ["text1", "text2", "text3", "text4", "text5"]
+    controller1.add_vectors(test_vectors)
+    controller1.add_texts(test_texts)
 
     # Save state
     controller1.save_state(controller1.state_path)
 
-    # Create second controller by loading the state
-    controller2 = RAGController.load_state(controller1.state_path)
+    # Create second controller by loading state
+    controller2 = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
 
-    # Check if vectors were loaded
-    assert controller2.index.ntotal == 4  # 2 vectors + 2 texts
+    # Verify data was loaded correctly
+    assert controller2.index.ntotal == 10
+    assert len(controller2.text_store) == 5
 
-    # Verify the vectors
-    vector1 = controller2.get_vector_by_index(0)
-    vector2 = controller2.get_vector_by_index(1)
-    np.testing.assert_array_almost_equal(vector1, vectors[0])
-    np.testing.assert_array_almost_equal(vector2, vectors[1])
-
-    # Verify the texts
-    assert controller2.text_store == texts
+    # Verify vectors and texts match
+    for i in range(5):
+        assert np.array_equal(controller2.get_vector_by_index(i), test_vectors[i])
+        assert controller2.get_text_by_index(i) == test_texts[i]
 
 
-def test_gpu_detection(rag_controller):
+def test_gpu_detection(temp_rag_folder, test_file_id):
     """Test GPU detection and usage."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
     # This test just verifies that the code runs without error
     # Actual GPU detection depends on the system
     assert True
 
 
-def test_invalid_vector_dimension():
+def test_invalid_vector_dimension(temp_rag_folder, test_file_id):
     """Test handling of vectors with wrong dimension."""
-    controller = RAGController()
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
     vectors = np.array([[1.0, 0.0]], dtype=np.float32)  # Wrong dimension
 
     with pytest.raises(ValueError):
@@ -136,8 +192,17 @@ def test_invalid_vector_dimension():
 
 
 # New tests for text functionality
-def test_add_texts(rag_controller):
+def test_add_texts(temp_rag_folder, test_file_id):
     """Test adding texts to the index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     texts = [
         "The quick brown fox jumps over the lazy dog",
         "A journey of a thousand miles begins with a single step",
@@ -153,8 +218,17 @@ def test_add_texts(rag_controller):
     assert rag_controller.text_store == texts
 
 
-def test_search_text(rag_controller):
+def test_search_text(temp_rag_folder, test_file_id):
     """Test searching for similar texts."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     # Add some test texts
     texts = [
         "The quick brown fox jumps over the lazy dog",
@@ -174,8 +248,17 @@ def test_search_text(rag_controller):
     assert results[0][1] < results[1][1]  # First result should have smaller distance
 
 
-def test_get_text_by_index(rag_controller):
+def test_get_text_by_index(temp_rag_folder, test_file_id):
     """Test retrieving texts by index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     # Add a test text
     text = "The quick brown fox jumps over the lazy dog"
     rag_controller.add_texts([text])
@@ -187,13 +270,31 @@ def test_get_text_by_index(rag_controller):
     assert retrieved_text == text
 
 
-def test_invalid_text_index(rag_controller):
+def test_invalid_text_index(temp_rag_folder, test_file_id):
     """Test handling of invalid text index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     with pytest.raises(IndexError):
         rag_controller.get_text_by_index(0)  # No texts added yet
 
 
-def test_empty_text_search(rag_controller):
+def test_empty_text_search(temp_rag_folder, test_file_id):
     """Test searching with empty text index."""
+    # Create a new controller and save its state
+    controller = RAGController(file_id=test_file_id, rag_state_folder_path=str(temp_rag_folder))
+    controller.save_state(controller.state_path)
+
+    # Now load the state
+    rag_controller = RAGController.from_file_id(
+        test_file_id, rag_state_folder_path=str(temp_rag_folder)
+    )
+
     results = rag_controller.search_text("test query", k=5)
     assert len(results) == 0

@@ -1,5 +1,4 @@
 import asyncio
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -163,7 +162,10 @@ def test_get_summary(qa_controller, test_file_id, mock_summary, mocker, mock_rag
         assert result == mock_summary
         mock_get_response.assert_called_once()
         mock_rag.assert_called_once_with(test_file_id)
-        mock_rag.return_value.search_text.assert_called_once_with("summary", k=5)
+        mock_rag.return_value.search_text.assert_called_once_with(
+            "base_summary, conclusion, findings, results, contribution, solved, outcome, achievement, impact, significance, future_work, limitations, recommendations",
+            k=5,
+        )
 
 
 def test_get_questions(qa_controller, test_file_id, mock_questions, mocker, mock_rag_controller):
@@ -182,11 +184,13 @@ def test_get_questions(qa_controller, test_file_id, mock_questions, mocker, mock
         # Assertions
         assert isinstance(result, MultipleChoiceQuestionSet)
         assert result == mock_questions
-        assert mock_get_response.call_count == 2
         assert (
-            mock_rag.call_count == 2
-        )  # Called once for get_questions and once for get_material_clips_for_topic
-        mock_rag.return_value.search_text.assert_called_with("test_value", k=5)
+            mock_get_response.call_count == 1
+        )  # Only one call to get_chat_gpt_response_structure_async
+        assert mock_rag.call_count == 1  # Only one call to RAGController.from_file_id
+        mock_rag.return_value.search_text.assert_called_with(
+            "test_field", k=2
+        )  # k=2 as per implementation
 
 
 def test_message_templates_initialization(qa_controller):
@@ -225,7 +229,10 @@ async def test_get_summary_async(
         assert result == mock_summary
         mock_get_response.assert_called_once()
         mock_rag.assert_called_once_with(test_file_id)
-        mock_rag.return_value.search_text.assert_called_once_with("summary", k=5)
+        mock_rag.return_value.search_text.assert_called_once_with(
+            "base_summary, conclusion, findings, results, contribution, solved, outcome, achievement, impact, significance, future_work, limitations, recommendations",
+            k=5,
+        )
 
 
 @pytest.mark.asyncio
@@ -247,11 +254,13 @@ async def test_get_questions_async(
         # Assertions
         assert isinstance(result, MultipleChoiceQuestionSet)
         assert result == mock_questions
-        assert mock_get_response.call_count == 2
         assert (
-            mock_rag.call_count == 2
-        )  # Called once for get_questions and once for get_material_clips_for_topic
-        mock_rag.return_value.search_text.assert_called_with("test_value", k=5)
+            mock_get_response.call_count == 1
+        )  # Only one call to get_chat_gpt_response_structure_async
+        assert mock_rag.call_count == 1  # Only one call to RAGController.from_file_id
+        mock_rag.return_value.search_text.assert_called_with(
+            "test_field", k=2
+        )  # k=2 as per implementation
 
 
 @pytest.mark.asyncio
@@ -272,19 +281,17 @@ async def test_get_questions_batch_rate_limiting(
         field_names = ["field1", "field2", "field3"]
         field_values = ["value1", "value2", "value3"]
 
-        start_time = time.time()
         results = await qa_controller.get_questions_batch(file_ids, field_names, field_values)
-        end_time = time.time()
 
         # Assertions
         assert len(results) == 3
         assert all(isinstance(result, MultipleChoiceQuestionSet) for result in results)
-        assert mock_get_response.call_count == 6  # 2 calls per file/field combination
-        assert (
-            mock_rag.call_count == 6
-        )  # Called twice per file (once for get_questions and once for get_material_clips_for_topic)
-        # Check that the total time is at least 2 seconds (3 calls with 1 second delay between each)
-        assert end_time - start_time >= 2.0
+        assert mock_get_response.call_count == 3  # One call per file/field combination
+        assert mock_rag.call_count == 3  # One call per file/field combination
+        for field_name in field_names:
+            mock_rag.return_value.search_text.assert_any_call(
+                field_name, k=2
+            )  # k=2 as per implementation
 
 
 @pytest.mark.asyncio

@@ -78,6 +78,7 @@ def test_file_meta(test_material_controller, test_markdown_file):
         / f"{test_markdown_file.stem}_0{test_markdown_file.suffix}",
         mc_question_sets={},
         summaries={},
+        question_comments={},
         parsing_results={"sections": None, "images": None, "tables": None},
     )
 

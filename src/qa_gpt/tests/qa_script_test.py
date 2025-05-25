@@ -13,6 +13,7 @@ from src.qa_gpt.core.objects.summaries import (
     BulletPoint,
     Conclusion,
     InnovationSummary,
+    MetaDataSummary,
     Motivation,
     StandardSummary,
     TechnicalSummary,
@@ -63,7 +64,10 @@ async def test_fetch_material_add_summary_flow(
         "TechnicalSummary": None,  # Will be added
         "InnovationSummary": None,  # Will be added
     }
-    file_meta.__getitem__.return_value = str(test_pdf_folder / "test.pdf")
+    file_meta.__getitem__.side_effect = lambda key: {
+        "parsing_results": {"sections": None},
+        "file_name": "test.pdf",
+    }[key]
 
     def append_summary_side_effect(file_id, summary):
         summary_type = summary.__class__.__name__
@@ -141,7 +145,10 @@ async def test_fetch_material_add_sets_flow(
         "StandardSummary": standard_summary,
         "TechnicalSummary": technical_summary,
     }
-    file_meta.__getitem__.return_value = str(test_pdf_folder / "test.pdf")
+    file_meta.__getitem__.side_effect = lambda key: {
+        "parsing_results": {"sections": None},
+        "file_name": "test.pdf",
+    }[key]
 
     def append_mc_question_set_side_effect(file_id, question_set, prefix=""):
         file_meta.mc_question_sets[prefix] = question_set
@@ -204,7 +211,10 @@ async def test_full_script_flow(
     file_meta = MagicMock()
     file_meta.summaries = {}
     file_meta.mc_question_sets = {}
-    file_meta.__getitem__.return_value = str(test_pdf_folder / "test.pdf")
+    file_meta.__getitem__.side_effect = lambda key: {
+        "parsing_results": {"sections": None},
+        "file_name": "test.pdf",
+    }[key]
 
     def append_mc_question_set_side_effect(file_id, question_set, prefix=""):
         file_meta.mc_question_sets[prefix] = question_set
@@ -308,7 +318,10 @@ async def test_fetch_material_add_summary_single_file(
         "InnovationSummary": None,  # Will be added
         "MetaDataSummary": None,  # Will be added
     }
-    file_meta.__getitem__.return_value = str(test_pdf_folder / "test.pdf")
+    file_meta.__getitem__.side_effect = lambda key: {
+        "parsing_results": {"sections": None},
+        "file_name": "test.pdf",
+    }[key]
 
     def append_summary_side_effect(file_id, summary):
         summary_type = summary.__class__.__name__
@@ -337,9 +350,22 @@ async def test_fetch_material_add_summary_single_file(
         references=["ref1", "ref2"],
     )
 
+    metadata_summary = MetaDataSummary(
+        paper_title="Test title",
+        authors="Author 1, Author 2",
+        journal_name="Test venue",
+        publication_date="2024-01-01",
+        keywords="keyword1, keyword2",
+        abstract="Test abstract",
+        doi="10.1234/test.1234",
+        institution="Test institution",
+        funding="Test funding",
+        acknowledgments="Test acknowledgments",
+    )
+
     # Setup mock to return coroutines for async functions
     async def mock_get_summaries_batch(*args, **kwargs):
-        return [technical_summary, innovation_summary]
+        return [technical_summary, innovation_summary, metadata_summary]
 
     mock_qa_controller.get_summaries_batch.side_effect = mock_get_summaries_batch
 
@@ -351,8 +377,10 @@ async def test_fetch_material_add_summary_single_file(
 
     # Verify function calls
     mock_material_controller.fetch_material_folder.assert_called_once_with(test_pdf_folder)
-    # Verify that append_summary was only called for the specified file
-    assert mock_material_controller.append_summary.call_count == 1  # Only for StandardSummary
+    # Verify that append_summary was called for each missing summary type
+    assert (
+        mock_material_controller.append_summary.call_count == 3
+    )  # For TechnicalSummary, InnovationSummary, and MetaDataSummary
 
 
 @pytest.mark.asyncio
@@ -391,7 +419,10 @@ async def test_fetch_material_add_sets_single_file(
         "StandardSummary": standard_summary,
         "TechnicalSummary": technical_summary,
     }
-    file_meta.__getitem__.return_value = str(test_pdf_folder / "test.pdf")
+    file_meta.__getitem__.side_effect = lambda key: {
+        "parsing_results": {"sections": None},
+        "file_name": "test.pdf",
+    }[key]
 
     def append_mc_question_set_side_effect(file_id, question_set, prefix=""):
         file_meta.mc_question_sets[prefix] = question_set

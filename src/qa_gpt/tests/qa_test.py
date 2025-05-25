@@ -27,7 +27,10 @@ async def test_get_summary(mock_rag_controller):
         assert result is not None
         assert isinstance(result, StandardSummary)
         mock_rag.assert_called_once_with(test_file_id)
-        mock_rag_controller.search_text.assert_called_once_with("summary", k=5)
+        mock_rag_controller.search_text.assert_called_once_with(
+            "base_summary, conclusion, findings, results, contribution, solved, outcome, achievement, impact, significance, future_work, limitations, recommendations",
+            k=5,
+        )
 
 
 @pytest.mark.asyncio
@@ -41,10 +44,10 @@ async def test_get_questions(mock_rag_controller):
         result = await qa_controller.get_questions(test_file_id, "test_field", "test_value")
         assert result is not None
         assert isinstance(result, MultipleChoiceQuestionSet)
-        assert (
-            mock_rag.call_count == 2
-        )  # Called once for get_questions and once for get_material_clips_for_topic
-        mock_rag_controller.search_text.assert_called_with("test_value", k=5)
+        assert mock_rag.call_count == 1  # Only one call to RAGController.from_file_id
+        mock_rag_controller.search_text.assert_called_with(
+            "test_field", k=2
+        )  # k=2 as per implementation
 
 
 if __name__ == "__main__":
