@@ -68,7 +68,7 @@ json
 
 
 # Launch
-1. streamlit run ./src/qa_gpt/script/QA_ui.py  (default port 8501)
+1. python -m streamlit run ./src/qa_gpt/script/QA_ui.py  (default port 8501)
 
 # TODO
 1. Use rag to get relative indexes for summaries and question generation.
