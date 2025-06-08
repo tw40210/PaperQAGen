@@ -4,6 +4,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from src.qa_gpt import ONLY_DISPLAY
 from src.qa_gpt.core.controller.db_controller import MaterialController
 from src.qa_gpt.core.objects.materials import FileMeta
 from src.qa_gpt.core.objects.questions import QuestionComment
@@ -68,10 +69,14 @@ def display_material_operations(
         return
 
     operation = st.selectbox(
-        "Select an operation", ["Remove selected material", "Comment on a question"]
+        "Select an operation", ["Comment on a question", "Remove selected material"]
     )
 
     if operation == "Remove selected material":
+        if ONLY_DISPLAY:
+            st.error("This operation is not available in display mode")
+            return
+
         if st.button("Run Operation"):
             remove_material(material_folder_path, material_controller)
     elif operation == "Comment on a question":

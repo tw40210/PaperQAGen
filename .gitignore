@@ -18,6 +18,7 @@ src/qa_gpt/chat/private_keys.py
 .cursorignore
 .env
 .cursor/*
+only_display_env/*
 
 # images
 *.png
@@ -35,4 +36,5 @@ src/qa_gpt/chat/private_keys.py
 *.xlsx
 *.pptx
 *.md
+
 

@@ -2,7 +2,7 @@ import asyncio
 
 import streamlit as st
 
-from src.qa_gpt.core.ui.file_upload import handle_file_upload
+from src.qa_gpt import ONLY_DISPLAY
 from src.qa_gpt.core.ui.material_operations import display_material_operations
 from src.qa_gpt.core.ui.material_selection import display_material_selection
 from src.qa_gpt.core.ui.question_display import (
@@ -25,7 +25,12 @@ def display_qa_page(folder_path: str = "output_question_data"):
 
     with col1:
         # Add file upload functionality
-        asyncio.run(handle_file_upload())
+        if ONLY_DISPLAY:
+            st.file_uploader("Upload a PDF file", type=["pdf"], disabled=True)
+        else:
+            from src.qa_gpt.core.ui.file_upload import handle_file_upload
+
+            asyncio.run(handle_file_upload())
 
         # Display material selection and get selected material and file
         material_folder_path, selected_file = display_material_selection(folder_path)
