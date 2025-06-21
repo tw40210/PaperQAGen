@@ -338,7 +338,7 @@ class FetchController:
             except Exception as e:
                 print(f"Error processing {file_id}: {str(e)}")
                 # Clean up any partially created state file
-                if rag_controller.state_path.exists():
+                if "rag_controller" in locals() and rag_controller.state_path.exists():
                     rag_controller.state_path.unlink()
                 continue
 

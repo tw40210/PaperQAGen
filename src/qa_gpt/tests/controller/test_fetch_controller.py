@@ -31,6 +31,7 @@ def sample_file_meta():
         file_path=Path("test.pdf"),
         mc_question_sets={},
         summaries={},
+        question_comments={},
         parsing_results={
             "sections": [{"content": "Section 1 content"}, {"content": "Section 2 content"}],
             "images": [],
@@ -59,13 +60,13 @@ async def test_build_rag_index_single_file(
         # Check that RAG state folder was created
         assert Path("./rag_state").exists()
 
-        # Check that RAG controller was initialized with correct path
+        # Check that RAG controller was initialized with correct file_id
         mock_rag_class.assert_called_once()
-        assert "file1_rag_state.json" in str(mock_rag_class.call_args[1]["index_path"])
+        assert mock_rag_class.call_args[1]["file_id"] == "file1"
 
         # Check that texts were added to RAG index
         mock_rag_controller.add_texts.assert_called_once_with(
-            ["Section 1 content", "Section 2 content"]
+            ["{'content': 'Section 1 content'}", "{'content': 'Section 2 content'}"]
         )
 
         # Check that RAG state was saved
@@ -127,6 +128,7 @@ async def test_build_rag_index_process_all(
         file_path=Path("test2.pdf"),
         mc_question_sets={},
         summaries={},
+        question_comments={},
         parsing_results={
             "sections": [{"content": "Section 1 content"}, {"content": "Section 2 content"}],
             "images": [],
@@ -169,4 +171,4 @@ async def test_build_rag_index_error_handling(
         await fetch_controller.build_rag_index(file_id="file1")
 
         # Verify that the error was handled gracefully
-        assert not Path("./rag_state/file1_rag_state.json").exists()
+        assert not Path("./rag_state/file1_rag_state.pkl").exists()

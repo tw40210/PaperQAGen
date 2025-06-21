@@ -38,7 +38,7 @@ def display_main_page():
 
     # Initialize session state for page selection if not exists
     if "current_page" not in st.session_state:
-        st.session_state.current_page = "qa"
+        st.session_state.current_page = "materials"
 
     # Navigation header
     st.markdown('<div class="nav-header">', unsafe_allow_html=True)
